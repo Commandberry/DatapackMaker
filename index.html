@@ -1,0 +1,2110 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC DataPack Studio | 1.13 ~ 26.3 통합 데이터팩 제작기</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for Real .zip Data Pack Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        mc: {
+                            bg: '#0d1117',
+                            panel: '#161b22',
+                            card: '#1f242c',
+                            border: '#30363d',
+                            emerald: '#10b981',
+                            emeraldDark: '#059669',
+                            accent: '#3b82f6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 커스텀 스크롤바 스타일링 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+        .code-editor {
+            tab-size: 2;
+            line-height: 1.6;
+        }
+        /* 제작대 3x3 그리드 셀 효과 */
+        .craft-slot {
+            transition: all 0.15s ease;
+            image-rendering: pixelated;
+        }
+        .craft-slot:hover {
+            border-color: #10b981;
+            transform: scale(1.03);
+        }
+        .pixel-icon {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="bg-mc-bg text-gray-100 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+
+    <!-- 상단 내비게이션 & 버전 컨트롤 헤더 -->
+    <header class="bg-mc-panel border-b border-mc-border sticky top-0 z-30 px-4 py-3 shadow-lg">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+            <!-- 로고 및 타이틀 -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-950/50 border border-emerald-400/30">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-extrabold text-lg tracking-tight text-white">MC DataPack Studio</h1>
+                        <span class="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">1.13 ~ 26.3</span>
+                    </div>
+                    <p class="text-xs text-gray-400 hidden sm:block">버전별 팩 포맷·폴더 단수·JSON 스키마 자동 대응 데이터팩 빌더</p>
+                </div>
+            </div>
+
+            <!-- 중앙: 마인크래프트 정식 릴리스 버전 선택기 -->
+            <div class="flex flex-wrap items-center gap-3 bg-mc-bg p-1.5 rounded-xl border border-mc-border">
+                <div class="flex items-center gap-2 pl-2">
+                    <span class="text-xs font-semibold text-gray-400">타겟 버전:</span>
+                    <select id="versionSelect" class="bg-mc-card text-white text-sm font-semibold rounded-lg px-3 py-1.5 border border-mc-border focus:outline-none focus:border-emerald-500 cursor-pointer">
+                        <!-- JS로 26.3 ~ 1.13 모든 정식 릴리스 동적 렌더링 -->
+                    </select>
+                </div>
+                <div id="formatBadge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-700/50 text-xs font-mono text-emerald-300">
+                    <!-- pack_format / min_format 표시 -->
+                </div>
+                <div id="folderModeBadge" class="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-950/50 border border-blue-700/40 text-xs text-blue-300" title="1.21(포맷 48)부터 일부 폴더명이 복수형에서 단수형으로 변경되었습니다.">
+                    <!-- 단수/복수 폴더 구조 안내 -->
+                </div>
+            </div>
+
+            <!-- 우측: 내보내기 및 프로젝트 초기화 액션 -->
+            <div class="flex items-center gap-2">
+                <button id="btnPackSettings" class="px-3 py-2 rounded-xl bg-mc-card hover:bg-gray-800 text-gray-200 text-xs font-semibold border border-mc-border transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span>팩 설정</span>
+                </button>
+                <button id="btnExportZip" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-950/50 transition flex items-center gap-1.5 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span>.ZIP 다운로드</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 버전 변경 알림 / 호환성 배너 -->
+    <div id="versionNoticeBar" class="bg-gradient-to-r from-emerald-950/40 via-mc-panel to-blue-950/40 border-b border-mc-border px-4 py-2 text-xs text-gray-300">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="versionNoticeText">버전 정보가 로드되었습니다.</span>
+            </div>
+            <div class="flex items-center gap-3 text-[11px] text-gray-400">
+                <span>네임스페이스: <strong id="headerNamespaceDisplay" class="text-emerald-400 font-mono">custom_pack</strong></span>
+                <span>파일 수: <strong id="headerFileCount" class="text-white font-mono">0</strong>개</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 3단 워크스페이스 -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
+        
+        <!-- 좌측 패널 (3 cols): 파일 보기 & 기능 추가 탭 -->
+        <aside class="lg:col-span-3 flex flex-col gap-4">
+            <div class="bg-mc-panel border border-mc-border rounded-2xl p-4 shadow-sm flex flex-col gap-3 flex-1 min-h-[520px]">
+                
+                <!-- 좌측 메인 탭 전환 (파일 보기 vs 기능 추가) -->
+                <div class="grid grid-cols-2 gap-1 bg-mc-bg p-1 rounded-xl border border-mc-border text-xs">
+                    <button id="tabBtnFiles" onclick="switchSidebarTab('files')" class="py-2 rounded-lg font-bold bg-mc-card text-white shadow transition">파일 보기 (<span id="fileCountBadge">1</span>)</button>
+                    <button id="tabBtnAdd" onclick="switchSidebarTab('add')" class="py-2 rounded-lg font-bold text-gray-400 hover:text-white transition">기능 추가</button>
+                </div>
+
+                <!-- 탭 1: 파일 보기 (생성된 파일 관리 및 삭제) -->
+                <div id="sidebarFilesTab" class="flex-1 flex flex-col gap-2 overflow-y-auto pr-1">
+                    <div class="flex items-center justify-between pt-1 pb-1">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">내 데이터팩 파일 목록</span>
+                        <button onclick="switchSidebarTab('add')" class="text-[11px] text-emerald-400 hover:underline">+ 새 파일 추가</button>
+                    </div>
+                    <div id="userFileListContainer" class="space-y-1.5 font-mono text-xs">
+                        <!-- 동적 렌더링 -->
+                    </div>
+                </div>
+
+                <!-- 탭 2: 기능 추가 (카테고리별 데이터팩 컴포넌트) -->
+                <div id="sidebarAddTab" class="hidden flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">카테고리별 기능 선택</span>
+                        <span id="availableCatCount" class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md"></span>
+                    </div>
+                    
+                    <div class="flex gap-1 bg-mc-bg p-1 rounded-xl border border-mc-border text-xs">
+                        <button data-group="all" class="cat-group-btn flex-1 py-1.5 rounded-lg font-semibold bg-mc-card text-white shadow">전체</button>
+                        <button data-group="core" class="cat-group-btn flex-1 py-1.5 rounded-lg font-semibold text-gray-400 hover:text-white">기본</button>
+                        <button data-group="gameplay" class="cat-group-btn flex-1 py-1.5 rounded-lg font-semibold text-gray-400 hover:text-white">전투/아이템</button>
+                        <button data-group="world" class="cat-group-btn flex-1 py-1.5 rounded-lg font-semibold text-gray-400 hover:text-white">월드</button>
+                    </div>
+
+                    <div id="categoryList" class="grid grid-cols-1 gap-1.5">
+                        <!-- 동적 렌더링 -->
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- 중앙 패널 (5 cols): 비주얼 빌더 (GUI) -->
+        <section class="lg:col-span-5 bg-mc-panel border border-mc-border rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-mc-border">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span id="editorCategoryBadge" class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">PACK.MCMETA</span>
+                        <h2 id="editorTitle" class="text-base font-bold text-white">팩 메타데이터 설정</h2>
+                    </div>
+                    <p id="editorFilePath" class="text-xs font-mono text-gray-400 mt-1">pack.mcmeta</p>
+                </div>
+                <button id="btnDeleteCurrentFile" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-semibold transition">
+                    파일 삭제
+                </button>
+            </div>
+
+            <!-- 비주얼 폼 컨테이너 -->
+            <div id="visualBuilderContainer" class="flex-1 overflow-y-auto space-y-4 pr-1">
+                <!-- 선택된 파일 종류에 맞는 GUI 폼이 여기에 렌더링됨 -->
+            </div>
+        </section>
+
+        <!-- 우측 패널 (4 cols): 실시간 코드 미리보기 & 직접 편집 -->
+        <section class="lg:col-span-4 bg-mc-panel border border-mc-border rounded-2xl p-5 shadow-sm flex flex-col gap-3">
+            <div class="flex items-center justify-between pb-3 border-b border-mc-border">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <h2 class="text-sm font-bold text-white">실시간 코드 출력</h2>
+                    <span id="codeSyntaxBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-mc-bg text-gray-400 border border-mc-border">JSON</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button id="btnFormatJson" class="px-2.5 py-1 rounded-lg bg-mc-card hover:bg-gray-800 text-gray-300 text-xs border border-mc-border transition" title="JSON 정렬">
+                        정렬
+                    </button>
+                    <button id="btnCopyCode" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 text-xs font-semibold border border-emerald-500/30 transition flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <span>복사</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 코드 에디터 텍스트 영역 -->
+            <div class="relative flex-1 flex flex-col min-h-[420px]">
+                <textarea id="rawCodeEditor" spellcheck="false" class="code-editor flex-1 w-full bg-mc-bg text-emerald-300 font-mono text-xs p-4 rounded-xl border border-mc-border focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+                <div id="codeStatusFooter" class="mt-2 flex items-center justify-between text-[11px] text-gray-400">
+                    <span id="jsonValidStatus" class="text-emerald-400 font-medium">✓ 유효한 구문입니다</span>
+                    <span>직접 수정 시 즉시 파일에 반영됩니다</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 토스트 메시지 컨테이너 -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 새 파일 생성 모달 -->
+    <div id="newFileModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+        <div class="bg-mc-panel border border-mc-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 id="modalCategoryTitle" class="text-lg font-bold text-white">새 기능 파일 생성</h3>
+                <button id="btnCloseModal" class="text-gray-400 hover:text-white p-1">✕</button>
+            </div>
+            <p id="modalCategoryDesc" class="text-xs text-gray-400 leading-relaxed"></p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">네임스페이스 (Namespace)</label>
+                    <input id="modalNamespaceInput" type="text" class="w-full bg-mc-bg border border-mc-border rounded-xl px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-emerald-500" placeholder="custom_pack">
+                </div>
+                <div id="modalSubfolderWrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">태그 대상 폴더 (Tag Type)</label>
+                    <select id="modalTagTypeSelect" class="w-full bg-mc-bg border border-mc-border rounded-xl px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-emerald-500">
+                        <!-- 동적 렌더링 -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">파일 이름 (확장자 제외, 소문자/숫자/_/-)</label>
+                    <input id="modalFileNameInput" type="text" class="w-full bg-mc-bg border border-mc-border rounded-xl px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-emerald-500" placeholder="example_item">
+                    <p id="modalPreviewPath" class="text-[11px] font-mono text-emerald-400 mt-1.5 break-all"></p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="btnCancelModal" class="px-4 py-2 rounded-xl bg-mc-card hover:bg-gray-800 text-gray-300 text-xs font-semibold">취소</button>
+                <button id="btnConfirmCreateFile" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">생성하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 버전별 비주얼 아이템 선택 모달 (Item Picker) -->
+    <div id="itemPickerModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-mc-panel border border-mc-border rounded-2xl max-w-2xl w-full p-5 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between pb-3 border-b border-mc-border">
+                <div>
+                    <h3 id="itemPickerTitle" class="text-base font-bold text-white flex items-center gap-2">
+                        <span>🎒 아이템 선택기</span>
+                        <span id="itemPickerVersionBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"></span>
+                    </h3>
+                    <p class="text-[11px] text-gray-400 mt-0.5">선택한 마인크래프트 버전에서 존재하는 아이템만 필터링되어 표시됩니다.</p>
+                </div>
+                <button onclick="closeItemPicker()" class="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-mc-card">✕</button>
+            </div>
+
+            <!-- 검색 및 카테고리 필터 -->
+            <div class="flex flex-wrap gap-2 my-3">
+                <input id="itemSearchInput" type="text" oninput="renderItemPickerGrid()" placeholder="아이템 이름 또는 ID 검색 (예: 다이아몬드, diamond, 철괴, 네더라이트...)"
+                    class="flex-1 min-w-[200px] bg-mc-bg border border-mc-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                <select id="itemPickerCatFilter" onchange="renderItemPickerGrid()" class="bg-mc-bg border border-mc-border rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">
+                    <option value="all">전체 분류</option>
+                    <option value="ore">광물 / 주괴</option>
+                    <option value="tool">도구 / 무기 / 방어구</option>
+                    <option value="block">블록 / 건축</option>
+                    <option value="food">음식 / 포션 / 특수</option>
+                    <option value="misc">자연 / 몬스터 전리품</option>
+                </select>
+            </div>
+
+            <!-- 아이템 아이콘 그리드 -->
+            <div id="itemPickerGrid" class="flex-1 overflow-y-auto grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 pr-1 min-h-[260px]">
+                <!-- 동적 렌더링 -->
+            </div>
+
+            <!-- 하단 직접 ID 입력 & 비우기 -->
+            <div class="pt-3 mt-3 border-t border-mc-border flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 flex-1 min-w-[220px]">
+                    <input id="itemCustomDirectInput" type="text" placeholder="직접 ID 입력 (예: minecraft:beacon)"
+                        class="flex-1 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-emerald-500">
+                    <button onclick="selectPickedItem(document.getElementById('itemCustomDirectInput').value)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shrink-0">직접 적용</button>
+                </div>
+                <button onclick="selectPickedItem('')" class="px-3 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/50 text-xs font-semibold">슬롯 비우기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * 1. 마인크래프트 1.13 ~ 26.3 모든 정식 릴리스 데이터팩 포맷 데이터베이스
+         * ============================================================================
+         * - pack_format: 해당 정식 릴리스의 데이터팩 포맷 번호
+         * - min/max_format: 1.21.9(포맷 88.0)부터 도입된 신규 pack.mcmeta 형식 지원
+         * - singularFolders: 1.21(포맷 48)부터 복수형 -> 단수형으로 바뀐 폴더 체계 여부
+         *   (functions->function, loot_tables->loot_table, recipes->recipe, advancements->advancement,
+         *    predicates->predicate, item_modifiers->item_modifier, structures->structure, tags/functions->tags/function 등)
+         */
+        const MC_VERSIONS = [
+            // 2026년 26.x 시리즈 (연도 기반 버전 체계)
+            { id: '26.3', label: '26.3 (최신 정식 릴리스)', format: 121.0, major: 121, minor: 0, year: 2026, note: '데이터팩 포맷 121.0. min_format / max_format 구조 권장 및 최신 데이터 컴포넌트 지원.' },
+            { id: '26.2', label: '26.2', format: 107.1, major: 107, minor: 1, year: 2026, note: '데이터팩 포맷 107.1. 최신 엔티티 변형 및 확장 컴포넌트 지원.' },
+            { id: '26.1.2', label: '26.1.2', format: 101.1, major: 101, minor: 1, year: 2026, note: '데이터팩 포맷 101.1.' },
+            { id: '26.1.1', label: '26.1.1', format: 101.1, major: 101, minor: 1, year: 2026, note: '데이터팩 포맷 101.1.' },
+            { id: '26.1', label: '26.1', format: 101.1, major: 101, minor: 1, year: 2026, note: '데이터팩 포맷 101.1. 26.x 연도제 버전 체계 시작.' },
+
+            // 1.21.x 시리즈
+            { id: '1.21.11', label: '1.21.11', format: 94.1, major: 94, minor: 1, year: 2025, note: '데이터팩 포맷 94.1. 게임 규칙 및 월드 생성 데이터 확장.' },
+            { id: '1.21.10', label: '1.21.10', format: 88.0, major: 88, minor: 0, year: 2025, note: '데이터팩 포맷 88.0.' },
+            { id: '1.21.9', label: '1.21.9', format: 88.0, major: 88, minor: 0, year: 2025, note: '데이터팩 포맷 88.0. min_format 및 max_format 필드 도입(pack_format 선택적).' },
+            { id: '1.21.8', label: '1.21.8', format: 81, major: 81, minor: 0, year: 2025, note: '데이터팩 포맷 81.' },
+            { id: '1.21.7', label: '1.21.7', format: 81, major: 81, minor: 0, year: 2025, note: '데이터팩 포맷 81.' },
+            { id: '1.21.6', label: '1.21.6', format: 80, major: 80, minor: 0, year: 2025, note: '데이터팩 포맷 80. 다이얼로그(Dialog) 및 Waypoint 시스템 추가.' },
+            { id: '1.21.5', label: '1.21.5', format: 71, major: 71, minor: 0, year: 2025, note: '데이터팩 포맷 71. 가축 변형(Chicken/Cow/Pig Variant) 데이터 주도화.' },
+            { id: '1.21.4', label: '1.21.4', format: 61, major: 61, minor: 0, year: 2024, note: '데이터팩 포맷 61. 창백한 정원(Pale Garden) 및 크리킹 데이터 지원.' },
+            { id: '1.21.3', label: '1.21.3', format: 57, major: 57, minor: 0, year: 2024, note: '데이터팩 포맷 57.' },
+            { id: '1.21.2', label: '1.21.2', format: 57, major: 57, minor: 0, year: 2024, note: '데이터팩 포맷 57. 시험의 방(Trial Chambers) 및 신규 마법 부여/악기 데이터 확장.' },
+            { id: '1.21.1', label: '1.21.1', format: 48, major: 48, minor: 0, year: 2024, note: '데이터팩 포맷 48. 단수형 디렉토리 구조 적용.' },
+            { id: '1.21', label: '1.21 (Tricky Trials)', format: 48, major: 48, minor: 0, year: 2024, note: '데이터팩 포맷 48. 중요 변경: functions, recipes, loot_tables 등 폴더명이 단수형(function, recipe, loot_table)으로 변경됨! 데이터 기반 마법 부여(Enchantment) 및 주크박스 노래 추가.' },
+
+            // 1.20.x 시리즈
+            { id: '1.20.6', label: '1.20.6', format: 41, major: 41, minor: 0, year: 2024, note: '데이터팩 포맷 41. 아이템 NBT가 데이터 컴포넌트(components)로 전면 개편됨.' },
+            { id: '1.20.5', label: '1.20.5 (Armored Paws)', format: 41, major: 41, minor: 0, year: 2024, note: '데이터팩 포맷 41. 아이템 컴포넌트(Item Components) 및 늑대 변형(Wolf Variant) 도입.' },
+            { id: '1.20.4', label: '1.20.4', format: 26, major: 26, minor: 0, year: 2023, note: '데이터팩 포맷 26.' },
+            { id: '1.20.3', label: '1.20.3 (Bats and Pots)', format: 26, major: 26, minor: 0, year: 2023, note: '데이터팩 포맷 26. 함수 매크로 및 return run 명령어 확장.' },
+            { id: '1.20.2', label: '1.20.2', format: 18, major: 18, minor: 0, year: 2023, note: '데이터팩 포맷 18. 함수 매크로($) 기능 및 supported_formats 지원.' },
+            { id: '1.20.1', label: '1.20.1', format: 15, major: 15, minor: 0, year: 2023, note: '데이터팩 포맷 15.' },
+            { id: '1.20', label: '1.20 (Trails & Tales)', format: 15, major: 15, minor: 0, year: 2023, note: '데이터팩 포맷 15. 갑옷 장식(Trim Pattern/Material) 데이터 주도화 및 return 명령어 추가.' },
+
+            // 1.19.x 시리즈
+            { id: '1.19.4', label: '1.19.4', format: 12, major: 12, minor: 0, year: 2023, note: '데이터팩 포맷 12. 피해 유형(Damage Type) 데이터팩 정의 도입.' },
+            { id: '1.19.3', label: '1.19.3', format: 10, major: 10, minor: 0, year: 2022, note: '데이터팩 포맷 10. 채팅 유형(Chat Type) 및 월드 생성 레지스트리 개편.' },
+            { id: '1.19.2', label: '1.19.2', format: 10, major: 10, minor: 0, year: 2022, note: '데이터팩 포맷 10.' },
+            { id: '1.19.1', label: '1.19.1', format: 10, major: 10, minor: 0, year: 2022, note: '데이터팩 포맷 10.' },
+            { id: '1.19', label: '1.19 (The Wild Update)', format: 10, major: 10, minor: 0, year: 2022, note: '데이터팩 포맷 10. 팩 필터(filter) 및 구조물 세트(Structure Set) 지원.' },
+
+            // 1.18.x 시리즈
+            { id: '1.18.2', label: '1.18.2', format: 9, major: 9, minor: 0, year: 2022, note: '데이터팩 포맷 9. 커스텀 구조물(Structure) 및 구조물 세트 추가.' },
+            { id: '1.18.1', label: '1.18.1', format: 8, major: 8, minor: 0, year: 2021, note: '데이터팩 포맷 8.' },
+            { id: '1.18', label: '1.18 (Caves & Cliffs II)', format: 8, major: 8, minor: 0, year: 2021, note: '데이터팩 포맷 8. 월드 높이 확장 및 노이즈 설정(Noise Settings) 개편.' },
+
+            // 1.17.x 시리즈
+            { id: '1.17.1', label: '1.17.1', format: 7, major: 7, minor: 0, year: 2021, note: '데이터팩 포맷 7.' },
+            { id: '1.17', label: '1.17 (Caves & Cliffs I)', format: 7, major: 7, minor: 0, year: 2021, note: '데이터팩 포맷 7. 아이템 수정자(Item Modifiers) 기능 최초 도입.' },
+
+            // 1.16.x 시리즈
+            { id: '1.16.5', label: '1.16.5', format: 6, major: 6, minor: 0, year: 2021, note: '데이터팩 포맷 6.' },
+            { id: '1.16.4', label: '1.16.4', format: 6, major: 6, minor: 0, year: 2020, note: '데이터팩 포맷 6.' },
+            { id: '1.16.3', label: '1.16.3', format: 6, major: 6, minor: 0, year: 2020, note: '데이터팩 포맷 6.' },
+            { id: '1.16.2', label: '1.16.2', format: 6, major: 6, minor: 0, year: 2020, note: '데이터팩 포맷 6. 커스텀 차원(Dimension) 및 바이옴(Worldgen) 정식 지원.' },
+            { id: '1.16.1', label: '1.16.1', format: 5, major: 5, minor: 0, year: 2020, note: '데이터팩 포맷 5. 대장장이 작업대(Smithing) 레시피 및 속성(Attribute) UUID 변경.' },
+            { id: '1.16', label: '1.16 (Nether Update)', format: 5, major: 5, minor: 0, year: 2020, note: '데이터팩 포맷 5. 네더 업데이트 및 차원 유형(Dimension Type) 실험 지원.' },
+
+            // 1.15.x 시리즈
+            { id: '1.15.2', label: '1.15.2', format: 5, major: 5, minor: 0, year: 2020, note: '데이터팩 포맷 5.' },
+            { id: '1.15.1', label: '1.15.1', format: 5, major: 5, minor: 0, year: 2019, note: '데이터팩 포맷 5.' },
+            { id: '1.15', label: '1.15 (Buzzy Bees)', format: 5, major: 5, minor: 0, year: 2019, note: '데이터팩 포맷 5. 조건부 술어(Predicates) 독립 파일 기능 최초 도입.' },
+
+            // 1.14.x 시리즈
+            { id: '1.14.4', label: '1.14.4', format: 4, major: 4, minor: 0, year: 2019, note: '데이터팩 포맷 4.' },
+            { id: '1.14.3', label: '1.14.3', format: 4, major: 4, minor: 0, year: 2019, note: '데이터팩 포맷 4.' },
+            { id: '1.14.2', label: '1.14.2', format: 4, major: 4, minor: 0, year: 2019, note: '데이터팩 포맷 4.' },
+            { id: '1.14.1', label: '1.14.1', format: 4, major: 4, minor: 0, year: 2019, note: '데이터팩 포맷 4.' },
+            { id: '1.14', label: '1.14 (Village & Pillage)', format: 4, major: 4, minor: 0, year: 2019, note: '데이터팩 포맷 4. 훈연기/용광로/모닥불/석재 절단기 레시피 추가.' },
+
+            // 1.13.x 시리즈 (데이터팩 최초 도입 버전)
+            { id: '1.13.2', label: '1.13.2', format: 4, major: 4, minor: 0, year: 2018, note: '데이터팩 포맷 4.' },
+            { id: '1.13.1', label: '1.13.1', format: 4, major: 4, minor: 0, year: 2018, note: '데이터팩 포맷 4.' },
+            { id: '1.13', label: '1.13 (Update Aquatic - 최초 도입)', format: 4, major: 4, minor: 0, year: 2018, note: '데이터팩 포맷 4. 마인크래프트 데이터팩 최초 도입 버전! 함수(functions), load/tick 태그, 레시피, 발전 과제, 루트 테이블, 구조물(.nbt) 지원.' }
+        ];
+
+        /**
+         * ============================================================================
+         * 1-B. 버전별 아이템 데이터베이스 & 아이콘 시스템 (1.13 ~ 26.3)
+         * ============================================================================
+         * - minFormat: 해당 아이템이 정식 추가된 최소 데이터팩 포맷 번호
+         *   (4: 1.13+, 5: 1.15/1.16+, 7: 1.17+, 10: 1.19+, 15: 1.20+, 48: 1.21+, 61: 1.21.4+)
+         * - 바닐라 텍스처 CDN + 실패 시 SVG/이모지 자동 폴백 지원
+         */
+        const MC_ITEMS_DB = [
+            // 광물 / 주괴
+            { id: 'minecraft:diamond', name: '다이아몬드', cat: 'ore', minFormat: 4, emoji: '💎' },
+            { id: 'minecraft:emerald', name: '에메랄드', cat: 'ore', minFormat: 4, emoji: '❇️' },
+            { id: 'minecraft:gold_ingot', name: '금 주괴', cat: 'ore', minFormat: 4, emoji: '🪙' },
+            { id: 'minecraft:iron_ingot', name: '철 주괴', cat: 'ore', minFormat: 4, emoji: '🔩' },
+            { id: 'minecraft:coal', name: '석탄', cat: 'ore', minFormat: 4, emoji: '🪨' },
+            { id: 'minecraft:lapis_lazuli', name: '청금석', cat: 'ore', minFormat: 4, emoji: '🔷' },
+            { id: 'minecraft:redstone', name: '레드스톤 가루', cat: 'ore', minFormat: 4, emoji: '🔴' },
+            { id: 'minecraft:quartz', name: '네더 석영', cat: 'ore', minFormat: 4, emoji: '⬜' },
+            { id: 'minecraft:netherite_ingot', name: '네더라이트 주괴', cat: 'ore', minFormat: 5, emoji: '⬛' },
+            { id: 'minecraft:netherite_scrap', name: '네더라이트 파편', cat: 'ore', minFormat: 5, emoji: '🟫' },
+            { id: 'minecraft:copper_ingot', name: '구리 주괴', cat: 'ore', minFormat: 7, emoji: '🟧' },
+            { id: 'minecraft:amethyst_shard', name: '자수정 조각', cat: 'ore', minFormat: 7, emoji: '🔮' },
+            { id: 'minecraft:raw_iron', name: '철 원석', cat: 'ore', minFormat: 7, emoji: '🪨' },
+            { id: 'minecraft:raw_gold', name: '금 원석', cat: 'ore', minFormat: 7, emoji: '🟡' },
+            { id: 'minecraft:resin_clump', name: '수지 덩어리 (1.21.4+)', cat: 'ore', minFormat: 61, emoji: '🟠' },
+
+            // 도구 / 무기 / 방어구
+            { id: 'minecraft:diamond_sword', name: '다이아몬드 검', cat: 'tool', minFormat: 4, emoji: '🗡️' },
+            { id: 'minecraft:diamond_pickaxe', name: '다이아몬드 곡괭이', cat: 'tool', minFormat: 4, emoji: '⛏️' },
+            { id: 'minecraft:diamond_axe', name: '다이아몬드 도끼', cat: 'tool', minFormat: 4, emoji: '🪓' },
+            { id: 'minecraft:diamond_chestplate', name: '다이아몬드 흉갑', cat: 'tool', minFormat: 4, emoji: '🦺' },
+            { id: 'minecraft:iron_sword', name: '철 검', cat: 'tool', minFormat: 4, emoji: '⚔️' },
+            { id: 'minecraft:bow', name: '활', cat: 'tool', minFormat: 4, emoji: '🏹' },
+            { id: 'minecraft:trident', name: '삼지창', cat: 'tool', minFormat: 4, emoji: '🔱' },
+            { id: 'minecraft:shield', name: '방패', cat: 'tool', minFormat: 4, emoji: '🛡️' },
+            { id: 'minecraft:elytra', name: '겉날개', cat: 'tool', minFormat: 4, emoji: '🪽' },
+            { id: 'minecraft:totem_of_undying', name: '불사의 토템', cat: 'tool', minFormat: 4, emoji: '🗿' },
+            { id: 'minecraft:crossbow', name: '쇠뇌', cat: 'tool', minFormat: 4, emoji: '🏹' },
+            { id: 'minecraft:netherite_sword', name: '네더라이트 검', cat: 'tool', minFormat: 5, emoji: '🗡️' },
+            { id: 'minecraft:netherite_pickaxe', name: '네더라이트 곡괭이', cat: 'tool', minFormat: 5, emoji: '⛏️' },
+            { id: 'minecraft:spyglass', name: '망원경', cat: 'tool', minFormat: 7, emoji: '🔭' },
+            { id: 'minecraft:brush', name: '솔', cat: 'tool', minFormat: 15, emoji: '🖌️' },
+            { id: 'minecraft:mace', name: '철퇴 (1.21+)', cat: 'tool', minFormat: 48, emoji: '🔨' },
+            { id: 'minecraft:wind_charge', name: '돌풍구 (1.21+)', cat: 'tool', minFormat: 48, emoji: '🌪️' },
+
+            // 블록 / 건축
+            { id: 'minecraft:oak_planks', name: '참나무 판자', cat: 'block', minFormat: 4, emoji: '🪵' },
+            { id: 'minecraft:cobblestone', name: '조약돌', cat: 'block', minFormat: 4, emoji: '🧱' },
+            { id: 'minecraft:stone', name: '돌', cat: 'block', minFormat: 4, emoji: '🪨' },
+            { id: 'minecraft:obsidian', name: '흑요석', cat: 'block', minFormat: 4, emoji: '🟪' },
+            { id: 'minecraft:glass', name: '유리', cat: 'block', minFormat: 4, emoji: '🪟' },
+            { id: 'minecraft:diamond_block', name: '다이아몬드 블록', cat: 'block', minFormat: 4, emoji: '🟦' },
+            { id: 'minecraft:gold_block', name: '금 블록', cat: 'block', minFormat: 4, emoji: '🟨' },
+            { id: 'minecraft:iron_block', name: '철 블록', cat: 'block', minFormat: 4, emoji: '⬜' },
+            { id: 'minecraft:emerald_block', name: '에메랄드 블록', cat: 'block', minFormat: 4, emoji: '🟩' },
+            { id: 'minecraft:beacon', name: '신호기', cat: 'block', minFormat: 4, emoji: '🚨' },
+            { id: 'minecraft:tnt', name: 'TNT', cat: 'block', minFormat: 4, emoji: '🧨' },
+            { id: 'minecraft:crying_obsidian', name: '우는 흑요석', cat: 'block', minFormat: 5, emoji: '🟣' },
+            { id: 'minecraft:netherite_block', name: '네더라이트 블록', cat: 'block', minFormat: 5, emoji: '⬛' },
+            { id: 'minecraft:sculk_sensor', name: '스컬크 감지체', cat: 'block', minFormat: 10, emoji: '📡' },
+            { id: 'minecraft:crafter', name: '제작기 (1.21+)', cat: 'block', minFormat: 48, emoji: '⚙️' },
+            { id: 'minecraft:heavy_core', name: '무거운 코어 (1.21+)', cat: 'block', minFormat: 48, emoji: '🧊' },
+
+            // 음식 / 포션 / 특수
+            { id: 'minecraft:apple', name: '사과', cat: 'food', minFormat: 4, emoji: '🍎' },
+            { id: 'minecraft:golden_apple', name: '황금 사과', cat: 'food', minFormat: 4, emoji: '🍏' },
+            { id: 'minecraft:enchanted_golden_apple', name: '마법이 부여된 황금 사과', cat: 'food', minFormat: 4, emoji: '✨' },
+            { id: 'minecraft:golden_carrot', name: '황금 당근', cat: 'food', minFormat: 4, emoji: '🥕' },
+            { id: 'minecraft:bread', name: '빵', cat: 'food', minFormat: 4, emoji: '🍞' },
+            { id: 'minecraft:cooked_beef', name: '익힌 소고기', cat: 'food', minFormat: 4, emoji: '🥩' },
+            { id: 'minecraft:experience_bottle', name: '경험치 병', cat: 'food', minFormat: 4, emoji: '🧪' },
+            { id: 'minecraft:honey_bottle', name: '꿀이 든 병', cat: 'food', minFormat: 5, emoji: '🍯' },
+            { id: 'minecraft:ominous_bottle', name: '불길한 병 (1.21+)', cat: 'food', minFormat: 48, emoji: '🍾' },
+
+            // 자연 / 몬스터 전리품
+            { id: 'minecraft:stick', name: '막대기', cat: 'misc', minFormat: 4, emoji: '🥢' },
+            { id: 'minecraft:string', name: '실', cat: 'misc', minFormat: 4, emoji: '🧵' },
+            { id: 'minecraft:feather', name: '깃털', cat: 'misc', minFormat: 4, emoji: '🪶' },
+            { id: 'minecraft:gunpowder', name: '화약', cat: 'misc', minFormat: 4, emoji: '💥' },
+            { id: 'minecraft:ender_pearl', name: '엔더 진주', cat: 'misc', minFormat: 4, emoji: '🟢' },
+            { id: 'minecraft:blaze_rod', name: '블레이즈 막대', cat: 'misc', minFormat: 4, emoji: '🔥' },
+            { id: 'minecraft:nether_star', name: '네더의 별', cat: 'misc', minFormat: 4, emoji: '⭐' },
+            { id: 'minecraft:heart_of_the_sea', name: '바다의 심장', cat: 'misc', minFormat: 4, emoji: '💙' },
+            { id: 'minecraft:dragon_breath', name: '드래곤의 숨결', cat: 'misc', minFormat: 4, emoji: '🐉' },
+            { id: 'minecraft:echo_shard', name: '메아리 조각', cat: 'misc', minFormat: 10, emoji: '💠' },
+            { id: 'minecraft:breeze_rod', name: '브리즈 막대 (1.21+)', cat: 'misc', minFormat: 48, emoji: '🌀' },
+            { id: 'minecraft:trial_key', name: '시련의 열쇠 (1.21+)', cat: 'misc', minFormat: 48, emoji: '🗝️' }
+        ];
+
+        /**
+         * 아이템 ID로부터 버전 호환 아이콘 URL 및 메타 정보 반환
+         */
+        function getItemMeta(itemId) {
+            if (!itemId) return null;
+            const cleanId = itemId.trim().toLowerCase();
+            const found = MC_ITEMS_DB.find(i => i.id === cleanId);
+            const shortName = cleanId.replace(/^minecraft:/, '');
+            // mc-assets GitHub CDN (1.21.4 정식 에셋 기준 픽셀 아이콘)
+            const iconUrl = `https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/item/${shortName}.png`;
+            const blockIconUrl = `https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/block/${shortName}.png`;
+            return {
+                id: cleanId,
+                name: found ? found.name : shortName,
+                emoji: found ? found.emoji : '📦',
+                iconUrl,
+                blockIconUrl
+            };
+        }
+
+        /**
+         * 아이템 아이콘 HTML 생성 (아이템 텍스처 -> 블록 텍스처 -> 이모지 3단 폴백)
+         */
+        function renderItemIconHtml(itemId, sizeClass = 'w-7 h-7') {
+            const meta = getItemMeta(itemId);
+            if (!meta) return `<span class="text-gray-600 text-xs">+</span>`;
+            return `
+                <img src="${meta.iconUrl}" alt="${escapeHtml(meta.name)}"
+                    class="${sizeClass} pixel-icon object-contain"
+                    onerror="if(!this.dataset.triedBlock){this.dataset.triedBlock='1';this.src='${meta.blockIconUrl}';}else{this.style.display='none';this.nextElementSibling.style.display='inline-flex';}">
+                <span style="display:none" class="${sizeClass} items-center justify-center text-base">${meta.emoji}</span>
+            `;
+        }
+
+        /**
+         * ============================================================================
+         * 2. 버전별 데이터팩 카테고리(기능) 정의
+         * ============================================================================
+         * - minFormat: 해당 기능이 마인크래프트에 추가된 최소 pack_format
+         * - getFolder(ver): 1.21(포맷 48) 기준 단수/복수 폴더명 자동 변환
+         */
+        const FEATURE_CATEGORIES = [
+            {
+                id: 'load_tag',
+                name: 'Load 이벤트 (load.json)',
+                group: 'core',
+                minFormat: 4,
+                ext: '.json',
+                icon: '⚡',
+                desc: '월드 로드 시 1회 실행할 함수를 지정하는 tags/function/load.json 태그입니다.',
+                isSystemTag: true,
+                fixedName: 'load',
+                getFolder: (v) => v.major >= 48 ? 'tags/function' : 'tags/functions'
+            },
+            {
+                id: 'tick_tag',
+                name: 'Tick 이벤트 (tick.json)',
+                group: 'core',
+                minFormat: 4,
+                ext: '.json',
+                icon: '⏱️',
+                desc: '매 틱(1/20초)마다 반복 실행할 함수를 지정하는 tags/function/tick.json 태그입니다.',
+                isSystemTag: true,
+                fixedName: 'tick',
+                getFolder: (v) => v.major >= 48 ? 'tags/function' : 'tags/functions'
+            },
+            {
+                id: 'function',
+                name: '함수 (.mcfunction)',
+                group: 'core',
+                minFormat: 4,
+                ext: '.mcfunction',
+                icon: '📜',
+                desc: '마인크래프트 명령어들을 순차적으로 실행하는 .mcfunction 스크립트 파일입니다.',
+                getFolder: (v) => v.major >= 48 ? 'function' : 'functions'
+            },
+            {
+                id: 'recipe',
+                name: '레시피 (Recipe)',
+                group: 'gameplay',
+                minFormat: 4,
+                ext: '.json',
+                icon: '⚒️',
+                desc: '작업대 조합법, 화로 제련, 용광로, 훈연기 레시피를 정의합니다.',
+                getFolder: (v) => v.major >= 48 ? 'recipe' : 'recipes'
+            },
+            {
+                id: 'loot_table',
+                name: '루트 테이블 (Loot Table)',
+                group: 'gameplay',
+                minFormat: 4,
+                ext: '.json',
+                icon: '🎁',
+                desc: '블록 파괴, 몹 처치, 상자 전리품, 낚시 등에서 드롭되는 아이템과 확률을 정의합니다.',
+                getFolder: (v) => v.major >= 48 ? 'loot_table' : 'loot_tables'
+            },
+            {
+                id: 'advancement',
+                name: '발전 과제 (Advancement)',
+                group: 'gameplay',
+                minFormat: 4,
+                ext: '.json',
+                icon: '🏆',
+                desc: '커스텀 도전 과제 탭, 달성 조건(Triggers), 보상 아이템 및 보상 함수를 정의합니다.',
+                getFolder: (v) => v.major >= 48 ? 'advancement' : 'advancements'
+            },
+            {
+                id: 'tags',
+                name: '태그 (Tags)',
+                group: 'core',
+                minFormat: 4,
+                ext: '.json',
+                icon: '🏷️',
+                desc: '블록, 아이템, 엔티티, 함수, 바이옴 등을 하나의 그룹(#namespace:tag)으로 묶습니다.',
+                getFolder: (v) => 'tags'
+            },
+            {
+                id: 'predicate',
+                name: '조건부 술어 (Predicate)',
+                group: 'core',
+                minFormat: 5, // 1.15+
+                ext: '.json',
+                icon: '🔍',
+                desc: '날씨, 시간, 플레이어 상태, 보유 아이템 등을 검사하는 재사용 가능한 JSON 조건식입니다. (1.15+)',
+                getFolder: (v) => v.major >= 48 ? 'predicate' : 'predicates'
+            },
+            {
+                id: 'item_modifier',
+                name: '아이템 수정자 (Item Modifier)',
+                group: 'gameplay',
+                minFormat: 7, // 1.17+
+                ext: '.json',
+                icon: '✨',
+                desc: '/item 명령어로 아이템의 이름, 설명(Lore), 마법 부여, 컴포넌트 등을 동적 수정합니다. (1.17+)',
+                getFolder: (v) => v.major >= 48 ? 'item_modifier' : 'item_modifiers'
+            },
+            {
+                id: 'dimension',
+                name: '차원 & 차원 유형 (Dimension)',
+                group: 'world',
+                minFormat: 6, // 1.16.2+
+                ext: '.json',
+                icon: '🌌',
+                desc: '새로운 커스텀 차원(Dimension)과 하늘색, 중력, 좌표 배율 등 차원 규칙을 정의합니다. (1.16.2+)',
+                getFolder: (v) => 'dimension'
+            },
+            {
+                id: 'worldgen_biome',
+                name: '바이옴 (Worldgen Biome)',
+                group: 'world',
+                minFormat: 6, // 1.16.2+
+                ext: '.json',
+                icon: '🌲',
+                desc: '온도, 강수량, 잔디/물 색상, 몹 스폰, 지형 생성 특징을 포함한 커스텀 바이옴을 생성합니다. (1.16.2+)',
+                getFolder: (v) => 'worldgen/biome'
+            },
+            {
+                id: 'structure_set',
+                name: '구조물 & 구조물 세트',
+                group: 'world',
+                minFormat: 9, // 1.18.2+
+                ext: '.json',
+                icon: '🏰',
+                desc: '월드 자연 생성 구조물의 배치 간격, 바이옴 조건, 직소(Jigsaw) 템플릿을 설정합니다. (1.18.2+)',
+                getFolder: (v) => v.major >= 48 ? 'worldgen/structure' : 'structures'
+            },
+            {
+                id: 'damage_type',
+                name: '피해 유형 (Damage Type)',
+                group: 'gameplay',
+                minFormat: 12, // 1.19.4+
+                ext: '.json',
+                icon: '⚔️',
+                desc: '/damage 명령어와 연동되는 커스텀 사망 메시지, 방어구 관통 여부, 소진도를 정의합니다. (1.19.4+)',
+                getFolder: (v) => 'damage_type'
+            },
+            {
+                id: 'trim_pattern',
+                name: '갑옷 장식 (Trim Pattern)',
+                group: 'gameplay',
+                minFormat: 15, // 1.20+
+                ext: '.json',
+                icon: '🛡️',
+                desc: '대장장이 작업대에서 갑옷에 문양을 새기는 커스텀 형판(Trim Pattern)을 등록합니다. (1.20+)',
+                getFolder: (v) => 'trim_pattern'
+            },
+            {
+                id: 'enchantment',
+                name: '데이터 기반 마법 부여 (Enchantment)',
+                group: 'gameplay',
+                minFormat: 48, // 1.21+
+                ext: '.json',
+                icon: '📘',
+                desc: '1.21부터 데이터팩만으로 완전히 새로운 커스텀 인챈트와 효과를 만들 수 있습니다. (1.21+)',
+                getFolder: (v) => 'enchantment'
+            },
+            {
+                id: 'jukebox_song',
+                name: '주크박스 음반 (Jukebox Song)',
+                group: 'world',
+                minFormat: 48, // 1.21+
+                ext: '.json',
+                icon: '🎵',
+                desc: '커스텀 사운드 이벤트와 재생 시간, 비교기 출력 신호를 가진 음반 데이터를 정의합니다. (1.21+)',
+                getFolder: (v) => 'jukebox_song'
+            },
+            {
+                id: 'wolf_variant',
+                name: '엔티티 변형 (Wolf / Animal Variant)',
+                group: 'world',
+                minFormat: 41, // 1.20.5+
+                ext: '.json',
+                icon: '🐺',
+                desc: '바이옴별 늑대, 닭, 소, 돼지 등 엔티티 외형 변형과 스폰 규칙을 정의합니다. (1.20.5+ / 1.21.5+)',
+                getFolder: (v) => 'wolf_variant'
+            },
+            {
+                id: 'dialog',
+                name: 'UI 다이얼로그 (Dialog)',
+                group: 'core',
+                minFormat: 80, // 1.21.6+
+                ext: '.json',
+                icon: '💬',
+                desc: '플레이어 화면에 버튼, 입력창, 안내 텍스트가 포함된 네이티브 팝업 창을 띄웁니다. (1.21.6+)',
+                getFolder: (v) => 'dialog'
+            }
+        ];
+
+        /**
+         * ============================================================================
+         * 3. 애플리케이션 전역 상태 (State)
+         * ============================================================================
+         */
+        const state = {
+            selectedVersionId: '26.3',
+            packDescription: 'MC DataPack Studio로 제작된 커스텀 데이터팩',
+            defaultNamespace: 'custom_pack',
+            includeSupportedFormats: false,
+            minSupportedFormat: 48,
+            maxSupportedFormat: 121,
+            activeGroupFilter: 'all',
+            activeFileId: 'pack.mcmeta',
+            files: [] // { id, categoryId, namespace, name, subTagType, data, rawText }
+        };
+
+        /**
+         * 아이템 아이콘 및 텍스처 로딩 (다중 폴백 CDN 시스템)
+         */
+        function getItemMeta(itemId) {
+            if (!itemId) return null;
+            const cleanId = itemId.trim().toLowerCase();
+            const found = MC_ITEMS_DB.find(i => i.id === cleanId);
+            const shortName = cleanId.replace(/^minecraft:/, '');
+            // 안정적인 다중 에셋 리포지토리 CDN 적용
+            const assetUrl = `https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.1/item/${shortName}.png`;
+            const blockUrl = `https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.1/block/${shortName}.png`;
+            return {
+                id: cleanId,
+                name: found ? found.name : shortName,
+                emoji: found ? found.emoji : '📦',
+                iconUrl: assetUrl,
+                blockUrl
+            };
+        }
+
+        function renderItemIconHtml(itemId, sizeClass = 'w-7 h-7') {
+            const meta = getItemMeta(itemId);
+            if (!meta) return `<span class="text-gray-600 text-xs">+</span>`;
+            return `
+                <img src="${meta.iconUrl}" alt="${escapeHtml(meta.name)}"
+                    class="${sizeClass} pixel-icon object-contain"
+                    onerror="if(!this.dataset.triedBlock){this.dataset.triedBlock='1';this.src='${meta.blockUrl}';}else{this.style.display='none';this.nextElementSibling.style.display='inline-flex';}">
+                <span style="display:none" class="${sizeClass} items-center justify-center text-base">${meta.emoji}</span>
+            `;
+        }
+
+        /**
+         * 헬퍼: 버전별 실제 파일 경로 계산
+         */
+        function resolveFilePath(file, versionObj) {
+            if (file.id === 'pack.mcmeta') return 'pack.mcmeta';
+            
+            // load / tick 시스템 태그 처리
+            if (file.categoryId === 'load_tick') {
+                const tagFolder = versionObj.major >= 48 ? 'tags/function' : 'tags/functions';
+                return `data/minecraft/${tagFolder}/${file.name}.json`;
+            }
+
+            const cat = FEATURE_CATEGORIES.find(c => c.id === file.categoryId);
+            if (!cat) return `data/${file.namespace}/${file.name}.json`;
+
+            let folder = cat.getFolder(versionObj);
+            if (file.categoryId === 'tags' && file.subTagType) {
+                // 태그의 경우 1.21+에서 functions -> function, items -> item 등 단수화 반영
+                let tagSub = file.subTagType;
+                if (versionObj.major >= 48) {
+                    const singularMap = {
+                        'functions': 'function',
+                        'blocks': 'block',
+                        'items': 'item',
+                        'entity_types': 'entity_type',
+                        'fluids': 'fluid',
+                        'game_events': 'game_event'
+                    };
+                    tagSub = singularMap[tagSub] || tagSub;
+                } else {
+                    const pluralMap = {
+                        'function': 'functions',
+                        'block': 'blocks',
+                        'item': 'items',
+                        'entity_type': 'entity_types',
+                        'fluid': 'fluids',
+                        'game_event': 'game_events'
+                    };
+                    tagSub = pluralMap[tagSub] || tagSub;
+                }
+                folder = `tags/${tagSub}`;
+            }
+
+            return `data/${file.namespace}/${folder}/${file.name}${cat.ext}`;
+        }
+
+        /**
+         * 헬퍼: 버전별 pack.mcmeta JSON 생성
+         */
+        function generatePackMcmetaObj(versionObj) {
+            const packObj = {
+                description: state.packDescription
+            };
+
+            // 1.21.9 (88.0) 이상: min_format / max_format 지원 + 호환용 pack_format
+            if (versionObj.major >= 88) {
+                packObj.pack_format = versionObj.major;
+                packObj.min_format = [versionObj.major, versionObj.minor];
+                packObj.max_format = [versionObj.major, versionObj.minor];
+            } else {
+                packObj.pack_format = versionObj.major;
+            }
+
+            // 1.20.2 (18) 이상에서 다중 버전 호환 범위 옵션 활성화 시
+            if (state.includeSupportedFormats && versionObj.major >= 18) {
+                packObj.supported_formats = {
+                    min_inclusive: Number(state.minSupportedFormat) || versionObj.major,
+                    max_inclusive: Number(state.maxSupportedFormat) || versionObj.major
+                };
+            }
+
+            return { pack: packObj };
+        }
+
+        /**
+         * ============================================================================
+         * 4. 카테고리별 기본 템플릿 & 버전 적응형 직렬화 로직
+         * ============================================================================
+         */
+        function createDefaultFileData(categoryId, namespace, name, versionObj, subTagType = 'block') {
+            switch (categoryId) {
+                case 'load_tag':
+                    return {
+                        replace: false,
+                        values: [`${namespace}:init`]
+                    };
+                case 'tick_tag':
+                    return {
+                        replace: false,
+                        values: [`${namespace}:loop`]
+                    };
+                case 'function':
+                    return {
+                        commands: [
+                            `# 커스텀 함수: ${namespace}:${name}`,
+                            `say §a함수가 실행되었습니다! (${versionObj.id})`
+                        ].join('\n')
+                    };
+
+                case 'recipe':
+                    return {
+                        recipeType: 'minecraft:crafting_shaped',
+                        // 9칸 슬롯에 아이템 ID를 직접 직관적으로 저장 (초기 기본 세팅 포함)
+                        gridItems: [
+                            'minecraft:gold_ingot', 'minecraft:gold_ingot', 'minecraft:gold_ingot',
+                            'minecraft:gold_ingot', 'minecraft:apple',      'minecraft:gold_ingot',
+                            'minecraft:gold_ingot', 'minecraft:gold_ingot', 'minecraft:gold_ingot'
+                        ],
+                        ingredient: 'minecraft:raw_iron',
+                        resultItem: 'minecraft:enchanted_golden_apple',
+                        resultCount: 1,
+                        experience: 0.7,
+                        cookingTime: 200
+                    };
+
+                case 'loot_table':
+                    return {
+                        lootType: 'minecraft:entity',
+                        rolls: 1,
+                        item: 'minecraft:diamond',
+                        minCount: 1,
+                        maxCount: 3,
+                        chance: 0.5
+                    };
+
+                case 'advancement':
+                    return {
+                        title: '새로운 모험의 시작',
+                        description: '커스텀 데이터팩의 첫 번째 발전 과제를 달성했습니다!',
+                        iconItem: 'minecraft:nether_star',
+                        frame: 'goal', // task, goal, challenge
+                        showToast: true,
+                        announceToChat: true,
+                        trigger: 'minecraft:tick',
+                        rewardFunction: `${namespace}:init`
+                    };
+
+                case 'tags':
+                    return {
+                        replace: false,
+                        values: subTagType.includes('block')
+                            ? ['minecraft:diamond_block', 'minecraft:emerald_block', 'minecraft:gold_block']
+                            : subTagType.includes('item')
+                            ? ['minecraft:diamond', 'minecraft:emerald']
+                            : subTagType.includes('entity')
+                            ? ['minecraft:zombie', 'minecraft:skeleton']
+                            : [`${namespace}:init`]
+                    };
+
+                case 'predicate':
+                    return {
+                        condition: 'minecraft:weather_check',
+                        raining: true,
+                        thundering: false
+                    };
+
+                case 'item_modifier':
+                    return {
+                        function: 'minecraft:set_name',
+                        customName: '전설의 검',
+                        color: 'gold'
+                    };
+
+                case 'dimension':
+                    return {
+                        type: 'minecraft:overworld',
+                        biome: 'minecraft:cherry_grove',
+                        seed: 123456789
+                    };
+
+                case 'worldgen_biome':
+                    return {
+                        has_precipitation: true,
+                        temperature: 0.8,
+                        downfall: 0.4,
+                        sky_color: 7907327,
+                        fog_color: 12638463,
+                        water_color: 4159204,
+                        water_fog_color: 329011
+                    };
+
+                case 'structure_set':
+                    return {
+                        biomes: '#minecraft:is_overworld',
+                        spacing: 32,
+                        separation: 8,
+                        salt: 14357617
+                    };
+
+                case 'damage_type':
+                    return {
+                        message_id: `${namespace}.custom_magic`,
+                        scaling: 'when_caused_by_living_non_player',
+                        exhaustion: 0.1
+                    };
+
+                case 'trim_pattern':
+                    return {
+                        asset_id: `${namespace}:${name}`,
+                        template_item: 'minecraft:coast_armor_trim_smithing_template',
+                        descriptionText: '커스텀 갑옷 장식'
+                    };
+
+                case 'enchantment':
+                    return {
+                        descriptionText: '번개 강타',
+                        supportedItems: '#minecraft:enchantable/sword',
+                        weight: 5,
+                        maxLevel: 3,
+                        anvilCost: 4
+                    };
+
+                case 'jukebox_song':
+                    return {
+                        soundEvent: 'minecraft:music_disc.pigstep',
+                        descriptionText: '커스텀 사운드트랙',
+                        lengthInSeconds: 148.0,
+                        comparatorOutput: 13
+                    };
+
+                case 'wolf_variant':
+                    return {
+                        wildTexture: 'minecraft:entity/wolf/wolf_ashen',
+                        tameTexture: 'minecraft:entity/wolf/wolf_ashen_tame',
+                        angryTexture: 'minecraft:entity/wolf/wolf_ashen_angry',
+                        biomes: 'minecraft:grove'
+                    };
+
+                case 'dialog':
+                    return {
+                        title: '데이터팩 안내 창',
+                        bodyText: '26.3 최신 버전 데이터팩 다이얼로그입니다.',
+                        buttonLabel: '확인'
+                    };
+
+                default:
+                    return {};
+            }
+        }
+
+        /**
+         * 상태 객체(file.data) -> 실제 마인크래프트 JSON / .mcfunction 문자열 변환
+         * (버전에 따라 키 구조 자동 변환: 예 - 레시피 result.item vs result.id, 1.20.5+ 컴포넌트 등)
+         */
+        function serializeFileToText(file, versionObj) {
+            if (file.id === 'pack.mcmeta') {
+                return JSON.stringify(generatePackMcmetaObj(versionObj), null, 2);
+            }
+
+            if (file.categoryId === 'function') {
+                return file.data.commands || '';
+            }
+
+            const d = file.data;
+            let outputObj = {};
+
+            switch (file.categoryId) {
+                case 'load_tick':
+                case 'tags':
+                    outputObj = {
+                        replace: Boolean(d.replace),
+                        values: Array.isArray(d.values) ? d.values : []
+                    };
+                    break;
+
+                case 'recipe': {
+                    // 1.20.5 (포맷 41)부터 레시피 결과물의 "item" 키가 "id"로 변경됨!
+                    const resultKey = versionObj.major >= 41 ? 'id' : 'item';
+                    const grid = Array.isArray(d.gridItems) ? d.gridItems : Array(9).fill('');
+
+                    if (d.recipeType === 'minecraft:crafting_shaped') {
+                        // 9칸 슬롯의 아이템들로부터 자동으로 pattern & key 딕셔너리 생성
+                        const symbolPool = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+                        const itemToSym = {};
+                        const keyObj = {};
+                        let symIdx = 0;
+
+                        const patternRows = [];
+                        for (let r = 0; r < 3; r++) {
+                            let rowStr = '';
+                            for (let c = 0; c < 3; c++) {
+                                const item = (grid[r * 3 + c] || '').trim();
+                                if (!item) {
+                                    rowStr += ' ';
+                                } else {
+                                    if (!itemToSym[item]) {
+                                        const sym = symbolPool[symIdx++];
+                                        itemToSym[item] = sym;
+                                        keyObj[sym] = versionObj.major >= 57 ? item : { item };
+                                    }
+                                    rowStr += itemToSym[item];
+                                }
+                            }
+                            patternRows.push(rowStr);
+                        }
+
+                        outputObj = {
+                            type: 'minecraft:crafting_shaped',
+                            pattern: patternRows,
+                            key: keyObj,
+                            result: {
+                                [resultKey]: d.resultItem || 'minecraft:stone',
+                                count: Number(d.resultCount) || 1
+                            }
+                        };
+                    } else if (d.recipeType === 'minecraft:crafting_shapeless') {
+                        const ingList = grid
+                            .map(v => (v || '').trim())
+                            .filter(Boolean)
+                            .map(v => versionObj.major >= 57 ? v : { item: v });
+                        outputObj = {
+                            type: 'minecraft:crafting_shapeless',
+                            ingredients: ingList.length ? ingList : [versionObj.major >= 57 ? 'minecraft:dirt' : { item: 'minecraft:dirt' }],
+                            result: {
+                                [resultKey]: d.resultItem || 'minecraft:stone',
+                                count: Number(d.resultCount) || 1
+                            }
+                        };
+                    } else {
+                        // 화로 / 훈연기 / 용광로
+                        outputObj = {
+                            type: d.recipeType,
+                            ingredient: versionObj.major >= 57 ? (d.ingredient || 'minecraft:raw_iron') : { item: d.ingredient || 'minecraft:raw_iron' },
+                            result: versionObj.major >= 41
+                                ? { id: d.resultItem || 'minecraft:iron_ingot' }
+                                : (d.resultItem || 'minecraft:iron_ingot'),
+                            experience: Number(d.experience) || 0.7,
+                            cookingtime: Number(d.cookingTime) || 200
+                        };
+                    }
+                    break;
+                }
+
+                case 'loot_table':
+                    outputObj = {
+                        type: d.lootType || 'minecraft:entity',
+                        pools: [
+                            {
+                                rolls: Number(d.rolls) || 1,
+                                entries: [
+                                    {
+                                        type: 'minecraft:item',
+                                        name: d.item || 'minecraft:diamond',
+                                        functions: [
+                                            {
+                                                function: 'minecraft:set_count',
+                                                count: {
+                                                    min: Number(d.minCount) || 1,
+                                                    max: Number(d.maxCount) || 1
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                conditions: [
+                                    {
+                                        condition: 'minecraft:random_chance',
+                                        chance: Number(d.chance) ?? 1.0
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                    break;
+
+                case 'advancement': {
+                    // 1.20.5 (포맷 41)부터 icon의 "item" 키가 "id"로 변경됨!
+                    const iconKey = versionObj.major >= 41 ? 'id' : 'item';
+                    outputObj = {
+                        display: {
+                            icon: { [iconKey]: d.iconItem || 'minecraft:nether_star' },
+                            title: { text: d.title || '발전 과제' },
+                            description: { text: d.description || '설명' },
+                            frame: d.frame || 'task',
+                            show_toast: Boolean(d.showToast),
+                            announce_to_chat: Boolean(d.announceToChat)
+                        },
+                        criteria: {
+                            requirement: {
+                                trigger: d.trigger || 'minecraft:tick'
+                            }
+                        }
+                    };
+                    if (d.rewardFunction && d.rewardFunction.trim()) {
+                        outputObj.rewards = { function: d.rewardFunction.trim() };
+                    }
+                    break;
+                }
+
+                case 'predicate':
+                    outputObj = {
+                        condition: d.condition || 'minecraft:weather_check',
+                        raining: Boolean(d.raining),
+                        thundering: Boolean(d.thundering)
+                    };
+                    break;
+
+                case 'item_modifier':
+                    outputObj = {
+                        function: 'minecraft:set_name',
+                        entity: 'this',
+                        name: {
+                            text: d.customName || '커스텀 아이템',
+                            color: d.color || 'gold',
+                            italic: false
+                        }
+                    };
+                    break;
+
+                case 'dimension':
+                    outputObj = {
+                        type: d.type || 'minecraft:overworld',
+                        generator: {
+                            type: 'minecraft:noise',
+                            settings: 'minecraft:overworld',
+                            biome_source: {
+                                type: 'minecraft:fixed',
+                                biome: d.biome || 'minecraft:plains'
+                            }
+                        }
+                    };
+                    break;
+
+                case 'worldgen_biome':
+                    outputObj = {
+                        has_precipitation: Boolean(d.has_precipitation),
+                        temperature: Number(d.temperature) || 0.8,
+                        downfall: Number(d.downfall) || 0.4,
+                        effects: {
+                            sky_color: Number(d.sky_color) || 7907327,
+                            fog_color: Number(d.fog_color) || 12638463,
+                            water_color: Number(d.water_color) || 4159204,
+                            water_fog_color: Number(d.water_fog_color) || 329011
+                        },
+                        spawners: {},
+                        spawn_costs: {},
+                        carvers: {},
+                        features: []
+                    };
+                    break;
+
+                case 'structure_set':
+                    outputObj = {
+                        structures: [
+                            {
+                                structure: `${file.namespace}:${file.name}`,
+                                weight: 1
+                            }
+                        ],
+                        placement: {
+                            type: 'minecraft:random_spread',
+                            spacing: Number(d.spacing) || 32,
+                            separation: Number(d.separation) || 8,
+                            salt: Number(d.salt) || 14357617
+                        }
+                    };
+                    break;
+
+                case 'damage_type':
+                    outputObj = {
+                        message_id: d.message_id || `${file.namespace}.custom`,
+                        scaling: d.scaling || 'when_caused_by_living_non_player',
+                        exhaustion: Number(d.exhaustion) || 0.1
+                    };
+                    break;
+
+                case 'trim_pattern':
+                    outputObj = {
+                        asset_id: d.asset_id || `${file.namespace}:${file.name}`,
+                        template_item: d.template_item || 'minecraft:coast_armor_trim_smithing_template',
+                        description: {
+                            text: d.descriptionText || '커스텀 갑옷 장식'
+                        },
+                        decal: false
+                    };
+                    break;
+
+                case 'enchantment':
+                    outputObj = {
+                        description: { text: d.descriptionText || '커스텀 인챈트' },
+                        supported_items: d.supportedItems || '#minecraft:enchantable/sword',
+                        weight: Number(d.weight) || 5,
+                        max_level: Number(d.maxLevel) || 3,
+                        min_cost: { base: 10, per_level_above_first: 10 },
+                        max_cost: { base: 40, per_level_above_first: 10 },
+                        anvil_cost: Number(d.anvilCost) || 4,
+                        slots: ['mainhand']
+                    };
+                    break;
+
+                case 'jukebox_song':
+                    outputObj = {
+                        sound_event: d.soundEvent || 'minecraft:music_disc.pigstep',
+                        description: { text: d.descriptionText || '커스텀 음반' },
+                        length_in_seconds: Number(d.lengthInSeconds) || 120.0,
+                        comparator_output: Number(d.comparatorOutput) || 15
+                    };
+                    break;
+
+                case 'wolf_variant':
+                    outputObj = {
+                        wild_texture: d.wildTexture || 'minecraft:entity/wolf/wolf_ashen',
+                        tame_texture: d.tameTexture || 'minecraft:entity/wolf/wolf_ashen_tame',
+                        angry_texture: d.angryTexture || 'minecraft:entity/wolf/wolf_ashen_angry',
+                        biomes: d.biomes || 'minecraft:grove'
+                    };
+                    break;
+
+                case 'dialog':
+                    outputObj = {
+                        type: 'minecraft:notice',
+                        title: { text: d.title || '알림' },
+                        body: [
+                            {
+                                type: 'minecraft:plain_message',
+                                contents: { text: d.bodyText || '내용' }
+                            }
+                        ],
+                        action: {
+                            label: { text: d.buttonLabel || '확인' }
+                        }
+                    };
+                    break;
+
+                default:
+                    outputObj = d;
+            }
+
+            return JSON.stringify(outputObj, null, 2);
+        }
+
+        /**
+         * ============================================================================
+         * 5. 초기 스타터 프로젝트 구성 (기본 생성 파일 최소화 및 깔끔한 시작)
+         * ============================================================================
+         */
+        function initDefaultProject() {
+            const v = MC_VERSIONS.find(ver => ver.id === state.selectedVersionId) || MC_VERSIONS[0];
+            state.files = [
+                {
+                    id: 'pack.mcmeta',
+                    categoryId: 'pack_meta',
+                    namespace: 'minecraft',
+                    name: 'pack',
+                    data: {},
+                    rawText: JSON.stringify(generatePackMcmetaObj(v), null, 2)
+                }
+            ];
+            state.activeFileId = 'pack.mcmeta';
+        }
+
+        function getCurrentVersion() {
+            return MC_VERSIONS.find(v => v.id === state.selectedVersionId) || MC_VERSIONS[0];
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const colorClass = type === 'error'
+                ? 'bg-rose-950/95 border-rose-500/50 text-rose-200'
+                : 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200';
+            toast.className = `px-4 py-2.5 rounded-xl border shadow-xl text-xs font-semibold backdrop-blur-md transition-all duration-300 ${colorClass}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2600);
+        }
+
+        function renderVersionDropdown() {
+            const select = document.getElementById('versionSelect');
+            if (!select) return;
+            select.innerHTML = MC_VERSIONS.map(v =>
+                `<option value="${v.id}" ${v.id === state.selectedVersionId ? 'selected' : ''}>MC ${v.label}</option>`
+            ).join('');
+        }
+
+        function updateVersionHeaderUI() {
+            const v = getCurrentVersion();
+            const formatBadge = document.getElementById('formatBadge');
+            const folderBadge = document.getElementById('folderModeBadge');
+            const noticeText = document.getElementById('versionNoticeText');
+            const nsDisplay = document.getElementById('headerNamespaceDisplay');
+            const fileCount = document.getElementById('headerFileCount');
+
+            if (formatBadge) {
+                formatBadge.textContent = v.major >= 88
+                    ? `format: ${v.format} (min/max)`
+                    : `pack_format: ${v.major}`;
+            }
+            if (folderBadge) {
+                folderBadge.textContent = v.major >= 48
+                    ? '단수 폴더 (function, recipe...)'
+                    : '복수 폴더 (functions, recipes...)';
+            }
+            if (noticeText) noticeText.textContent = `[MC ${v.id}] ${v.note}`;
+            if (nsDisplay) nsDisplay.textContent = state.defaultNamespace;
+            if (fileCount) fileCount.textContent = state.files.length;
+        }
+
+        let sidebarActiveTab = 'files'; // 'files' or 'add'
+
+        function switchSidebarTab(tab) {
+            sidebarActiveTab = tab;
+            const filesTab = document.getElementById('sidebarFilesTab');
+            const addTab = document.getElementById('sidebarAddTab');
+            const btnFiles = document.getElementById('tabBtnFiles');
+            const btnAdd = document.getElementById('tabBtnAdd');
+
+            if (tab === 'files') {
+                filesTab.classList.remove('hidden');
+                addTab.classList.add('hidden');
+                btnFiles.className = 'py-2 rounded-lg font-bold bg-mc-card text-white shadow transition';
+                btnAdd.className = 'py-2 rounded-lg font-bold text-gray-400 hover:text-white transition';
+            } else {
+                filesTab.classList.add('hidden');
+                addTab.classList.remove('hidden');
+                btnAdd.className = 'py-2 rounded-lg font-bold bg-mc-card text-white shadow transition';
+                btnFiles.className = 'py-2 rounded-lg font-bold text-gray-400 hover:text-white transition';
+            }
+        }
+
+        function renderUserFileList() {
+            const v = getCurrentVersion();
+            const container = document.getElementById('userFileListContainer');
+            const badge = document.getElementById('fileCountBadge');
+            if (badge) badge.textContent = state.files.length;
+            if (!container) return;
+
+            container.innerHTML = state.files.map(file => {
+                const isActive = file.id === state.activeFileId;
+                const fullPath = resolveFilePath(file, v);
+                const isMeta = file.id === 'pack.mcmeta';
+                return `
+                    <div onclick="selectFile('${file.id}')"
+                        class="group flex items-center justify-between gap-2 px-3 py-2 rounded-xl border cursor-pointer transition ${
+                            isActive
+                                ? 'bg-emerald-950/50 border-emerald-500/60 text-emerald-200'
+                                : 'bg-mc-bg hover:bg-mc-card border-mc-border text-gray-300'
+                        }">
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate font-semibold text-[11px]">${escapeHtml(fullPath)}</div>
+                        </div>
+                        ${!isMeta ? `
+                            <button type="button" onclick="event.stopPropagation(); deleteFile('${file.id}')"
+                                title="파일 삭제"
+                                class="opacity-60 hover:opacity-100 text-rose-400 hover:text-rose-300 px-1.5 py-0.5 rounded text-[11px]">
+                                ✕
+                            </button>
+                        ` : `<span class="text-[10px] text-gray-500">필수</span>`}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCategoryList() {
+            const v = getCurrentVersion();
+            const container = document.getElementById('categoryList');
+            const countBadge = document.getElementById('availableCatCount');
+            if (!container) return;
+
+            const available = FEATURE_CATEGORIES.filter(cat => {
+                if (v.major < cat.minFormat) return false;
+                if (state.activeGroupFilter !== 'all' && cat.group !== state.activeGroupFilter) return false;
+                return true;
+            });
+
+            if (countBadge) {
+                const totalSupported = FEATURE_CATEGORIES.filter(c => v.major >= c.minFormat).length;
+                countBadge.textContent = `${totalSupported}개 지원`;
+            }
+
+            container.innerHTML = available.map(cat => `
+                <button type="button" onclick="openCreateFileModal('${cat.id}')"
+                    class="w-full text-left p-2.5 rounded-xl bg-mc-bg hover:bg-mc-card border border-mc-border hover:border-emerald-500/50 transition flex items-start gap-2.5 cursor-pointer">
+                    <span class="text-base leading-none mt-0.5">${cat.icon}</span>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-xs font-bold text-gray-100 truncate">${escapeHtml(cat.name)}</div>
+                        <div class="text-[10px] text-gray-400 line-clamp-1 mt-0.5">${escapeHtml(cat.desc)}</div>
+                    </div>
+                    <span class="text-emerald-400 text-xs font-bold">+</span>
+                </button>
+            `).join('');
+        }
+
+        function refreshAllUI() {
+            updateVersionHeaderUI();
+            renderUserFileList();
+            renderCategoryList();
+            renderVisualBuilder();
+            renderCodeEditor();
+        }
+
+        function selectFile(fileId) {
+            state.activeFileId = fileId;
+            renderUserFileList();
+            renderVisualBuilder();
+            renderCodeEditor();
+        }
+
+        function deleteFile(fileId) {
+            if (fileId === 'pack.mcmeta') return;
+            state.files = state.files.filter(f => f.id !== fileId);
+            if (state.activeFileId === fileId) {
+                state.activeFileId = 'pack.mcmeta';
+            }
+            refreshAllUI();
+            showToast('파일이 삭제되었습니다.');
+        }
+
+        function updateActiveFileField(key, value) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file) return;
+            file.data[key] = value;
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderCodeEditor();
+        }
+
+        function updatePackMetaField(key, value) {
+            state[key] = value;
+            const packFile = state.files.find(f => f.id === 'pack.mcmeta');
+            if (packFile) {
+                packFile.rawText = serializeFileToText(packFile, getCurrentVersion());
+            }
+            refreshAllUI();
+        }
+
+        function renderCodeEditor() {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            const editor = document.getElementById('rawCodeEditor');
+            const badge = document.getElementById('codeSyntaxBadge');
+            const status = document.getElementById('jsonValidStatus');
+            if (!file || !editor) return;
+
+            if (file.rawText === undefined) {
+                file.rawText = serializeFileToText(file, getCurrentVersion());
+            }
+            editor.value = file.rawText;
+
+            if (file.categoryId === 'function') {
+                badge.textContent = 'MCFUNCTION';
+                status.textContent = `✓ 총 ${file.rawText.split('\n').length}줄 명령어 스크립트`;
+                status.className = 'text-emerald-400 font-medium';
+            } else {
+                badge.textContent = 'JSON';
+                try {
+                    JSON.parse(file.rawText);
+                    status.textContent = '✓ 유효한 JSON 구조입니다';
+                    status.className = 'text-emerald-400 font-medium';
+                } catch (e) {
+                    status.textContent = '⚠️ JSON 문법 오류가 있습니다';
+                    status.className = 'text-amber-400 font-medium';
+                }
+            }
+        }
+
+        function renderVisualBuilder() {
+            const v = getCurrentVersion();
+            const file = state.files.find(f => f.id === state.activeFileId);
+            const container = document.getElementById('visualBuilderContainer');
+            const badge = document.getElementById('editorCategoryBadge');
+            const title = document.getElementById('editorTitle');
+            const pathEl = document.getElementById('editorFilePath');
+            const delBtn = document.getElementById('btnDeleteCurrentFile');
+            if (!file || !container) return;
+
+            pathEl.textContent = resolveFilePath(file, v);
+            delBtn.classList.toggle('hidden', file.id === 'pack.mcmeta');
+
+            if (file.id === 'pack.mcmeta') {
+                badge.textContent = 'PACK.MCMETA';
+                title.textContent = '팩 메타데이터 & 기본 네임스페이스 설정';
+                container.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-300 mb-1">데이터팩 설명 (description)</label>
+                                <input type="text" value="${escapeHtml(state.packDescription)}"
+                                    oninput="updatePackMetaField('packDescription', this.value)"
+                                    class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-300 mb-1">기본 네임스페이스 (Namespace)</label>
+                                <input type="text" value="${escapeHtml(state.defaultNamespace)}"
+                                    oninput="updatePackMetaField('defaultNamespace', this.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))"
+                                    class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-xs font-mono text-emerald-300 focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                        ${v.major >= 18 ? `
+                        <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-3">
+                            <label class="flex items-center gap-2 text-xs font-semibold text-gray-200 cursor-pointer">
+                                <input type="checkbox" ${state.includeSupportedFormats ? 'checked' : ''}
+                                    onchange="updatePackMetaField('includeSupportedFormats', this.checked)"
+                                    class="rounded bg-mc-card border-mc-border text-emerald-500">
+                                <span>다중 버전 호환 범위 (supported_formats) 포함</span>
+                            </label>
+                            ${state.includeSupportedFormats ? `
+                            <div class="grid grid-cols-2 gap-3 pt-1">
+                                <div>
+                                    <label class="block text-[11px] text-gray-400 mb-1">최소 포맷 (min_inclusive)</label>
+                                    <input type="number" value="${state.minSupportedFormat}"
+                                        oninput="updatePackMetaField('minSupportedFormat', this.value)"
+                                        class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 text-xs font-mono text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-gray-400 mb-1">최대 포맷 (max_inclusive)</label>
+                                    <input type="number" value="${state.maxSupportedFormat}"
+                                        oninput="updatePackMetaField('maxSupportedFormat', this.value)"
+                                        class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 text-xs font-mono text-white">
+                                </div>
+                            </div>` : ''}
+                        </div>` : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            const cat = FEATURE_CATEGORIES.find(c => c.id === file.categoryId);
+            badge.textContent = (cat ? cat.id : file.categoryId).toUpperCase();
+            title.textContent = cat ? cat.name : file.name;
+            const d = file.data;
+
+            if (file.categoryId === 'function') {
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex flex-wrap gap-1.5">
+                            <button onclick="appendFunctionCmd('say §a안녕하세요!')" class="px-2.5 py-1 rounded-lg bg-mc-card hover:bg-gray-800 border border-mc-border text-[11px] text-emerald-300 font-mono">+ say</button>
+                            <button onclick="appendFunctionCmd('give @s minecraft:diamond 1')" class="px-2.5 py-1 rounded-lg bg-mc-card hover:bg-gray-800 border border-mc-border text-[11px] text-emerald-300 font-mono">+ give</button>
+                            <button onclick="appendFunctionCmd('effect give @s minecraft:speed 10 1 true')" class="px-2.5 py-1 rounded-lg bg-mc-card hover:bg-gray-800 border border-mc-border text-[11px] text-emerald-300 font-mono">+ effect</button>
+                            <button onclick="appendFunctionCmd('playsound minecraft:entity.experience_orb.pickup master @s')" class="px-2.5 py-1 rounded-lg bg-mc-card hover:bg-gray-800 border border-mc-border text-[11px] text-emerald-300 font-mono">+ playsound</button>
+                        </div>
+                        <textarea rows="12" oninput="updateActiveFileField('commands', this.value)"
+                            class="w-full bg-mc-bg border border-mc-border rounded-xl p-3 font-mono text-xs text-gray-100 focus:outline-none focus:border-emerald-500">${escapeHtml(d.commands || '')}</textarea>
+                    </div>
+                `;
+                return;
+            }
+
+            if (file.categoryId === 'load_tag' || file.categoryId === 'tick_tag' || file.categoryId === 'tags') {
+                const values = Array.isArray(d.values) ? d.values : [];
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                            <input type="checkbox" ${d.replace ? 'checked' : ''} onchange="updateActiveFileField('replace', this.checked)">
+                            <span>기존 바닐라 태그 덮어쓰기 (replace: true)</span>
+                        </label>
+                        <div class="bg-mc-bg border border-mc-border rounded-xl p-3 space-y-2">
+                            <div class="text-xs font-semibold text-gray-300">등록된 항목 목록 (values)</div>
+                            <div class="space-y-1.5">
+                                ${values.map((val, idx) => `
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" value="${escapeHtml(val)}"
+                                            onchange="updateTagValue(${idx}, this.value)"
+                                            class="flex-1 bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-emerald-300">
+                                        <button onclick="removeTagValue(${idx})" class="px-2 py-1 rounded-lg bg-rose-950/70 text-rose-300 text-xs">삭제</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button onclick="addTagValue()" class="mt-2 px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">+ 항목 추가</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (file.categoryId === 'recipe') {
+                const grid = Array.isArray(d.gridItems) ? d.gridItems : Array(9).fill('');
+                const isShapedOrShapeless = d.recipeType === 'minecraft:crafting_shaped' || d.recipeType === 'minecraft:crafting_shapeless';
+                container.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-mc-bg border border-mc-border rounded-xl p-3.5 space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-300 mb-1">레시피 유형</label>
+                                <select onchange="updateActiveFileField('recipeType', this.value); renderVisualBuilder();"
+                                    class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-xs text-white">
+                                    <option value="minecraft:crafting_shaped" ${d.recipeType === 'minecraft:crafting_shaped' ? 'selected' : ''}>작업대 - 모양 있는 조합 (Shaped)</option>
+                                    <option value="minecraft:crafting_shapeless" ${d.recipeType === 'minecraft:crafting_shapeless' ? 'selected' : ''}>작업대 - 모양 없는 조합 (Shapeless)</option>
+                                    <option value="minecraft:smelting" ${d.recipeType === 'minecraft:smelting' ? 'selected' : ''}>화로 제련 (Smelting)</option>
+                                    <option value="minecraft:blasting" ${d.recipeType === 'minecraft:blasting' ? 'selected' : ''}>용광로 제련 (Blasting)</option>
+                                    <option value="minecraft:smoking" ${d.recipeType === 'minecraft:smoking' ? 'selected' : ''}>훈연기 조리 (Smoking)</option>
+                                </select>
+                            </div>
+
+                            ${isShapedOrShapeless ? `
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-semibold text-gray-300">3x3 제작대 슬롯 (클릭하여 아이템 선택)</span>
+                                    <button onclick="updateActiveFileField('gridItems', Array(9).fill('')); renderVisualBuilder();" class="text-[11px] text-rose-400 hover:underline">전체 비우기</button>
+                                </div>
+                                <div class="flex flex-wrap items-center justify-center gap-4 bg-mc-card p-4 rounded-xl border border-mc-border">
+                                    <div class="grid grid-cols-3 gap-1.5">
+                                        ${grid.map((item, idx) => `
+                                            <button type="button" onclick="openItemPicker('grid', ${idx})"
+                                                title="${escapeHtml(item || '빈 슬롯 (클릭하여 선택)')}"
+                                                class="craft-slot w-12 h-12 rounded-xl bg-mc-bg border border-mc-border flex items-center justify-center relative">
+                                                ${renderItemIconHtml(item, 'w-8 h-8')}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                    <span class="text-gray-400 font-bold text-lg">➔</span>
+                                    <div class="flex flex-col items-center gap-1.5">
+                                        <button type="button" onclick="openItemPicker('result', 0)"
+                                            title="${escapeHtml(d.resultItem || '결과 아이템 선택')}"
+                                            class="craft-slot w-14 h-14 rounded-xl bg-mc-bg border-2 border-emerald-500/60 flex items-center justify-center">
+                                            ${renderItemIconHtml(d.resultItem, 'w-9 h-9')}
+                                        </button>
+                                        <span class="text-[10px] font-mono text-emerald-300">${escapeHtml((d.resultItem || '').replace('minecraft:', ''))}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            ` : `
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-gray-300 mb-1">재료 아이템</label>
+                                    <button type="button" onclick="openItemPicker('ingredient', 0)"
+                                        class="w-full flex items-center gap-2 bg-mc-card border border-mc-border hover:border-emerald-500 rounded-lg px-3 py-2 text-xs text-white">
+                                        ${renderItemIconHtml(d.ingredient, 'w-6 h-6')}
+                                        <span class="truncate font-mono">${escapeHtml(d.ingredient || '선택')}</span>
+                                    </button>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-300 mb-1">결과 아이템</label>
+                                    <button type="button" onclick="openItemPicker('result', 0)"
+                                        class="w-full flex items-center gap-2 bg-mc-card border border-mc-border hover:border-emerald-500 rounded-lg px-3 py-2 text-xs text-white">
+                                        ${renderItemIconHtml(d.resultItem, 'w-6 h-6')}
+                                        <span class="truncate font-mono">${escapeHtml(d.resultItem || '선택')}</span>
+                                    </button>
+                                </div>
+                            </div>
+                            `}
+
+                            <div class="grid grid-cols-2 gap-3 pt-1">
+                                <div>
+                                    <label class="block text-xs text-gray-300 mb-1">결과 개수 (count)</label>
+                                    <input type="number" min="1" max="64" value="${d.resultCount || 1}"
+                                        oninput="updateActiveFileField('resultCount', this.value)"
+                                        class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 text-xs font-mono text-white">
+                                </div>
+                                ${!isShapedOrShapeless ? `
+                                <div>
+                                    <label class="block text-xs text-gray-300 mb-1">제련 시간 (틱, 200=10초)</label>
+                                    <input type="number" min="1" value="${d.cookingTime || 200}"
+                                        oninput="updateActiveFileField('cookingTime', this.value)"
+                                        class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 text-xs font-mono text-white">
+                                </div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 기타 모든 JSON 카테고리 범용 동적 폼 빌더
+            const fieldEntries = Object.entries(d);
+            container.innerHTML = `
+                <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-3">
+                    <p class="text-[11px] text-gray-400">속성 값을 수정하면 우측 ${v.id} 호환 JSON 코드가 즉시 업데이트됩니다.</p>
+                    ${fieldEntries.map(([k, val]) => {
+                        if (typeof val === 'boolean') {
+                            return `
+                                <label class="flex items-center gap-2 text-xs text-gray-200 cursor-pointer py-1">
+                                    <input type="checkbox" ${val ? 'checked' : ''} onchange="updateActiveFileField('${k}', this.checked)">
+                                    <span class="font-mono">${escapeHtml(k)}</span>
+                                </label>
+                            `;
+                        }
+                        if (typeof val === 'number') {
+                            return `
+                                <div>
+                                    <label class="block text-xs font-mono text-gray-300 mb-1">${escapeHtml(k)}</label>
+                                    <input type="number" step="any" value="${val}"
+                                        oninput="updateActiveFileField('${k}', Number(this.value))"
+                                        class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 text-xs font-mono text-white">
+                                </div>
+                            `;
+                        }
+                        const isItemField = k.toLowerCase().includes('item');
+                        return `
+                            <div>
+                                <label class="block text-xs font-mono text-gray-300 mb-1">${escapeHtml(k)}</label>
+                                <div class="flex gap-2">
+                                    <input type="text" value="${escapeHtml(val)}"
+                                        oninput="updateActiveFileField('${k}', this.value)"
+                                        class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-300">
+                                    ${isItemField ? `<button type="button" onclick="openItemPicker('field:${k}', 0)" class="px-2.5 py-1.5 rounded-lg bg-mc-card border border-mc-border hover:border-emerald-500 text-xs">🎒</button>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function appendFunctionCmd(cmd) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'function') return;
+            file.data.commands = (file.data.commands ? file.data.commands + '\n' : '') + cmd;
+            file.rawText = file.data.commands;
+            renderVisualBuilder();
+            renderCodeEditor();
+        }
+
+        function updateTagValue(idx, val) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !Array.isArray(file.data.values)) return;
+            file.data.values[idx] = val;
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderCodeEditor();
+        }
+
+        function removeTagValue(idx) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !Array.isArray(file.data.values)) return;
+            file.data.values.splice(idx, 1);
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderVisualBuilder();
+            renderCodeEditor();
+        }
+
+        function addTagValue() {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file) return;
+            if (!Array.isArray(file.data.values)) file.data.values = [];
+            file.data.values.push(`${state.defaultNamespace}:new_entry`);
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderVisualBuilder();
+            renderCodeEditor();
+        }
+
+        /**
+         * ============================================================================
+         * 6. 새 파일 생성 모달 & 버전별 비주얼 아이템 선택기(Item Picker)
+         * ============================================================================
+         */
+        let pendingCategoryId = null;
+
+        function openCreateFileModal(categoryId) {
+            const cat = FEATURE_CATEGORIES.find(c => c.id === categoryId);
+            if (!cat) return;
+            pendingCategoryId = categoryId;
+
+            document.getElementById('modalCategoryTitle').textContent = `${cat.icon} ${cat.name} 추가`;
+            document.getElementById('modalCategoryDesc').textContent = cat.desc;
+
+            const nsInput = document.getElementById('modalNamespaceInput');
+            const nameInput = document.getElementById('modalFileNameInput');
+            const subWrapper = document.getElementById('modalSubfolderWrapper');
+            const tagSelect = document.getElementById('modalTagTypeSelect');
+
+            if (cat.isSystemTag) {
+                nsInput.value = 'minecraft';
+                nsInput.disabled = true;
+                nameInput.value = cat.fixedName;
+                nameInput.disabled = true;
+            } else {
+                nsInput.value = state.defaultNamespace;
+                nsInput.disabled = false;
+                nameInput.value = `custom_${cat.id}`;
+                nameInput.disabled = false;
+            }
+
+            if (cat.id === 'tags') {
+                subWrapper.classList.remove('hidden');
+                tagSelect.innerHTML = `
+                    <option value="block">블록 태그 (blocks / block)</option>
+                    <option value="item">아이템 태그 (items / item)</option>
+                    <option value="entity_type">엔티티 태그 (entity_types / entity_type)</option>
+                    <option value="function">함수 태그 (functions / function)</option>
+                `;
+            } else {
+                subWrapper.classList.add('hidden');
+            }
+
+            updateModalPreviewPath();
+            const modal = document.getElementById('newFileModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCreateFileModal() {
+            const modal = document.getElementById('newFileModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            pendingCategoryId = null;
+        }
+
+        function updateModalPreviewPath() {
+            if (!pendingCategoryId) return;
+            const v = getCurrentVersion();
+            const cat = FEATURE_CATEGORIES.find(c => c.id === pendingCategoryId);
+            const ns = document.getElementById('modalNamespaceInput').value.trim() || 'custom_pack';
+            const name = document.getElementById('modalFileNameInput').value.trim() || 'example';
+            const subTag = document.getElementById('modalTagTypeSelect').value;
+
+            const mockFile = {
+                id: 'preview',
+                categoryId: cat.isSystemTag ? 'load_tick' : pendingCategoryId,
+                namespace: ns,
+                name: name,
+                subTagType: subTag
+            };
+            document.getElementById('modalPreviewPath').textContent = `생성 경로: ${resolveFilePath(mockFile, v)}`;
+        }
+
+        function confirmCreateFile() {
+            if (!pendingCategoryId) return;
+            const v = getCurrentVersion();
+            const cat = FEATURE_CATEGORIES.find(c => c.id === pendingCategoryId);
+            const ns = document.getElementById('modalNamespaceInput').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'custom_pack';
+            const name = document.getElementById('modalFileNameInput').value.trim().toLowerCase().replace(/[^a-z0-9_/-]/g, '') || 'custom_item';
+            const subTag = document.getElementById('modalTagTypeSelect').value;
+
+            const actualCatId = cat.isSystemTag ? 'load_tick' : pendingCategoryId;
+            const newId = `${actualCatId}_${ns}_${name}_${Date.now()}`;
+            const data = createDefaultFileData(pendingCategoryId, ns, name, v, subTag);
+            const newFile = {
+                id: newId,
+                categoryId: actualCatId,
+                namespace: ns,
+                name: name,
+                subTagType: subTag,
+                data
+            };
+            newFile.rawText = serializeFileToText(newFile, v);
+
+            state.files.push(newFile);
+            state.activeFileId = newId;
+            closeCreateFileModal();
+            switchSidebarTab('files');
+            refreshAllUI();
+            showToast(`${resolveFilePath(newFile, v)} 파일이 생성되었습니다.`);
+        }
+
+        let itemPickerTarget = { mode: 'grid', index: 0 };
+
+        function openItemPicker(mode, index = 0) {
+            itemPickerTarget = { mode, index };
+            const v = getCurrentVersion();
+            document.getElementById('itemPickerVersionBadge').textContent = `MC ${v.id} 호환`;
+            document.getElementById('itemSearchInput').value = '';
+            document.getElementById('itemCustomDirectInput').value = '';
+            renderItemPickerGrid();
+
+            const modal = document.getElementById('itemPickerModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeItemPicker() {
+            const modal = document.getElementById('itemPickerModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function renderItemPickerGrid() {
+            const v = getCurrentVersion();
+            const query = (document.getElementById('itemSearchInput').value || '').trim().toLowerCase();
+            const catFilter = document.getElementById('itemPickerCatFilter').value;
+            const gridEl = document.getElementById('itemPickerGrid');
+
+            const filtered = MC_ITEMS_DB.filter(item => {
+                if (v.major < item.minFormat) return false;
+                if (catFilter !== 'all' && item.cat !== catFilter) return false;
+                if (query && !item.name.toLowerCase().includes(query) && !item.id.toLowerCase().includes(query)) return false;
+                return true;
+            });
+
+            if (!filtered.length) {
+                gridEl.innerHTML = `<div class="col-span-full text-center text-xs text-gray-400 py-10">검색 결과가 없습니다. 하단 입력창에서 아이템 ID를 직접 입력할 수 있습니다.</div>`;
+                return;
+            }
+
+            gridEl.innerHTML = filtered.map(item => `
+                <button type="button" onclick="selectPickedItem('${item.id}')"
+                    class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-mc-bg hover:bg-mc-card border border-mc-border hover:border-emerald-500 transition text-center cursor-pointer">
+                    ${renderItemIconHtml(item.id, 'w-8 h-8')}
+                    <span class="text-[11px] font-semibold text-gray-200 truncate w-full">${escapeHtml(item.name)}</span>
+                    <span class="text-[9px] font-mono text-gray-500 truncate w-full">${item.id.replace('minecraft:', '')}</span>
+                </button>
+            `).join('');
+        }
+
+        function selectPickedItem(itemId) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file) return;
+
+            if (itemPickerTarget.mode === 'grid') {
+                if (!Array.isArray(file.data.gridItems)) file.data.gridItems = Array(9).fill('');
+                file.data.gridItems[itemPickerTarget.index] = itemId;
+            } else if (itemPickerTarget.mode === 'result') {
+                file.data.resultItem = itemId || 'minecraft:stone';
+            } else if (itemPickerTarget.mode === 'ingredient') {
+                file.data.ingredient = itemId || 'minecraft:raw_iron';
+            } else if (itemPickerTarget.mode.startsWith('field:')) {
+                const fieldKey = itemPickerTarget.mode.slice(6);
+                file.data[fieldKey] = itemId;
+            }
+
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            closeItemPicker();
+            renderVisualBuilder();
+            renderCodeEditor();
+        }
+
+        // 페이지 로드 시 전체 초기화 실행
+        window.addEventListener('DOMContentLoaded', () => {
+            renderVersionDropdown();
+            initDefaultProject();
+            bindEvents();
+            refreshAllUI();
+        });
+
+        function bindEvents() {
+            // 현재 파일 삭제 버튼
+            document.getElementById('btnDeleteCurrentFile').addEventListener('click', () => {
+                deleteFile(state.activeFileId);
+            });
+
+            // 모달 이벤트
+            document.getElementById('btnCloseModal').addEventListener('click', closeCreateFileModal);
+            document.getElementById('btnCancelModal').addEventListener('click', closeCreateFileModal);
+            document.getElementById('btnConfirmCreateFile').addEventListener('click', confirmCreateFile);
+            document.getElementById('modalNamespaceInput').addEventListener('input', updateModalPreviewPath);
+            document.getElementById('modalFileNameInput').addEventListener('input', updateModalPreviewPath);
+            document.getElementById('modalTagTypeSelect').addEventListener('change', updateModalPreviewPath);
+
+            // 버전 변경 이벤트
+            document.getElementById('versionSelect').addEventListener('change', (e) => {
+                state.selectedVersionId = e.target.value;
+                const v = getCurrentVersion();
+                state.files.forEach(f => {
+                    f.rawText = serializeFileToText(f, v);
+                });
+                refreshAllUI();
+                showToast(`타겟 버전이 MC ${v.id} (포맷 ${v.format})(으)로 변경되었습니다.`);
+            });
+
+            // 카테고리 그룹 필터 버튼
+            document.querySelectorAll('.cat-group-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.cat-group-btn').forEach(b => {
+                        b.className = 'cat-group-btn flex-1 py-1.5 rounded-lg font-semibold text-gray-400 hover:text-white';
+                    });
+                    btn.className = 'cat-group-btn flex-1 py-1.5 rounded-lg font-semibold bg-mc-card text-white shadow';
+                    state.activeGroupFilter = btn.dataset.group;
+                    renderCategoryList();
+                });
+            });
+
+            // 우측 코드 에디터 직접 입력 반영
+            document.getElementById('rawCodeEditor').addEventListener('input', (e) => {
+                const file = state.files.find(f => f.id === state.activeFileId);
+                if (!file) return;
+                file.rawText = e.target.value;
+                if (file.categoryId === 'function') {
+                    file.data.commands = e.target.value;
+                }
+                const status = document.getElementById('jsonValidStatus');
+                if (file.categoryId !== 'function') {
+                    try {
+                        JSON.parse(file.rawText);
+                        status.textContent = '✓ 유효한 JSON 구조입니다';
+                        status.className = 'text-emerald-400 font-medium';
+                    } catch (err) {
+                        status.textContent = '⚠️ JSON 문법 오류가 있습니다';
+                        status.className = 'text-amber-400 font-medium';
+                    }
+                } else {
+                    status.textContent = `✓ 총 ${file.rawText.split('\n').length}줄 명령어 스크립트`;
+                }
+            });
+
+            // JSON 정렬 버튼
+            document.getElementById('btnFormatJson').addEventListener('click', () => {
+                const file = state.files.find(f => f.id === state.activeFileId);
+                if (!file || file.categoryId === 'function') return;
+                try {
+                    const parsed = JSON.parse(file.rawText);
+                    file.rawText = JSON.stringify(parsed, null, 2);
+                    renderCodeEditor();
+                    showToast('JSON 코드가 깔끔하게 정렬되었습니다.');
+                } catch (e) {
+                    showToast('JSON 문법 오류가 있어 정렬할 수 없습니다.', 'error');
+                }
+            });
+
+            // 코드 복사 버튼
+            document.getElementById('btnCopyCode').addEventListener('click', () => {
+                const editor = document.getElementById('rawCodeEditor');
+                editor.select();
+                document.execCommand('copy');
+                showToast('코드가 클립보드에 복사되었습니다!');
+            });
+
+            // 팩 설정 버튼
+            document.getElementById('btnPackSettings').addEventListener('click', () => {
+                selectFile('pack.mcmeta');
+                switchSidebarTab('files');
+            });
+
+            // .ZIP 데이터팩 내보내기 버튼
+            document.getElementById('btnExportZip').addEventListener('click', async () => {
+                try {
+                    if (typeof JSZip === 'undefined') {
+                        showToast('JSZip 라이브러리를 불러오지 못했습니다.', 'error');
+                        return;
+                    }
+                    const zip = new JSZip();
+                    const v = getCurrentVersion();
+
+                    state.files.forEach(file => {
+                        const filePath = resolveFilePath(file, v);
+                        zip.file(filePath, file.rawText || '');
+                    });
+
+                    const blob = await zip.generateAsync({ type: 'blob' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${state.defaultNamespace}_mc_${v.id}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast(`데이터팩 .ZIP 파일이 다운로드되었습니다!`);
+                } catch (err) {
+                    showToast('ZIP 생성 중 오류가 발생했습니다: ' + err.message, 'error');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
