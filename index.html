@@ -78,7 +78,7 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <button id="btnPackSettings" class="px-3 py-2 rounded-xl bg-mc-card hover:bg-gray-800 text-gray-200 text-xs font-semibold border border-mc-border transition flex items-center gap-1.5">
+                <button id="btnPackSettings" onclick="selectFile('pack.mcmeta')" class="px-3 py-2 rounded-xl bg-mc-card hover:bg-gray-800 text-gray-200 text-xs font-semibold border border-mc-border transition flex items-center gap-1.5 cursor-pointer">
                     <span>팩 설정</span>
                 </button>
                 <button id="btnExportZip" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer">
@@ -103,7 +103,7 @@
                 <div id="sidebarFilesTab" class="flex-1 flex flex-col gap-2 overflow-y-auto pr-1">
                     <div class="flex items-center justify-between pt-1 pb-1">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-400">내 데이터팩 파일 목록</span>
-                        <button onclick="switchSidebarTab('add')" class="text-[11px] text-emerald-400 hover:underline">+ 새 파일 추가</button>
+                        <button onclick="switchSidebarTab('add')" class="text-[11px] text-emerald-400 hover:underline cursor-pointer">+ 새 파일 추가</button>
                     </div>
                     <div id="userFileListContainer" class="space-y-1.5 font-mono text-xs"></div>
                 </div>
@@ -135,7 +135,7 @@
                     </div>
                     <p id="editorFilePath" class="text-xs font-mono text-gray-400 mt-1">pack.mcmeta</p>
                 </div>
-                <button id="btnDeleteCurrentFile" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-semibold transition">
+                <button id="btnDeleteCurrentFile" onclick="deleteFile(state.activeFileId)" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-semibold transition cursor-pointer">
                     파일 삭제
                 </button>
             </div>
@@ -154,7 +154,7 @@
         <div class="bg-mc-panel border border-mc-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div class="flex items-center justify-between">
                 <h3 id="modalCategoryTitle" class="text-lg font-bold text-white">새 기능 파일 생성</h3>
-                <button id="btnCloseModal" class="text-gray-400 hover:text-white p-1">✕</button>
+                <button id="btnCloseModal" class="text-gray-400 hover:text-white p-1 cursor-pointer">✕</button>
             </div>
             <p id="modalCategoryDesc" class="text-xs text-gray-400 leading-relaxed"></p>
             
@@ -175,8 +175,8 @@
             </div>
 
             <div class="flex justify-end gap-2 pt-2">
-                <button id="btnCancelModal" class="px-4 py-2 rounded-xl bg-mc-card hover:bg-gray-800 text-gray-300 text-xs font-semibold">취소</button>
-                <button id="btnConfirmCreateFile" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">생성하기</button>
+                <button id="btnCancelModal" class="px-4 py-2 rounded-xl bg-mc-card hover:bg-gray-800 text-gray-300 text-xs font-semibold cursor-pointer">취소</button>
+                <button id="btnConfirmCreateFile" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer">생성하기</button>
             </div>
         </div>
     </div>
@@ -189,7 +189,7 @@
                     <span>🎒 아이템 선택기</span>
                     <span id="itemPickerVersionBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"></span>
                 </h3>
-                <button onclick="closeItemPicker()" class="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-mc-card">✕</button>
+                <button onclick="closeItemPicker()" class="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-mc-card cursor-pointer">✕</button>
             </div>
 
             <div class="flex flex-wrap gap-2 my-3">
@@ -211,87 +211,51 @@
                 <div class="flex items-center gap-2 flex-1 min-w-[220px]">
                     <input id="itemCustomDirectInput" type="text" placeholder="직접 ID 입력 (예: minecraft:beacon)"
                         class="flex-1 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-emerald-500">
-                    <button onclick="selectPickedItem(document.getElementById('itemCustomDirectInput').value)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shrink-0">직접 적용</button>
+                    <button onclick="selectPickedItem(document.getElementById('itemCustomDirectInput').value)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shrink-0 cursor-pointer">직접 적용</button>
                 </div>
-                <button onclick="selectPickedItem('')" class="px-3 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/50 text-xs font-semibold">슬롯 비우기</button>
+                <button onclick="selectPickedItem('')" class="px-3 py-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/50 text-xs font-semibold cursor-pointer">슬롯 비우기</button>
             </div>
         </div>
     </div>
 
     <script>
-        // 1.13부터 26.3까지의 모든 정식 릴리스 버전 데이터베이스
+        // 마인크래프트 버전 데이터베이스
         const MC_VERSIONS = [
-            { id: '26.3', label: '26.3 (최신 정식 릴리스)', format: 121.0, major: 121, minor: 0, note: '데이터팩 포맷 121.0. 최신 컴포넌트 지원.' },
+            { id: '26.3', label: '26.3 (최신 정식 릴리스)', format: 121.0, major: 121, minor: 0, note: '데이터팩 포맷 121.0.' },
             { id: '26.2', label: '26.2', format: 107.1, major: 107, minor: 1, note: '데이터팩 포맷 107.1.' },
             { id: '26.1', label: '26.1', format: 101.1, major: 101, minor: 1, note: '데이터팩 포맷 101.1.' },
             { id: '1.21.11', label: '1.21.11', format: 94.1, major: 94, minor: 1, note: '데이터팩 포맷 94.1.' },
             { id: '1.21.10', label: '1.21.10', format: 88.0, major: 88, minor: 0, note: '데이터팩 포맷 88.0.' },
-            { id: '1.21.9', label: '1.21.9', format: 88.0, major: 88, minor: 0, note: '데이터팩 포맷 88.0.' },
-            { id: '1.21.8', label: '1.21.8', format: 81, major: 81, minor: 0, note: '데이터팩 포맷 81.' },
-            { id: '1.21.7', label: '1.21.7', format: 81, major: 81, minor: 0, note: '데이터팩 포맷 81.' },
-            { id: '1.21.6', label: '1.21.6', format: 80, major: 80, minor: 0, note: '데이터팩 포맷 80. 다이얼로그(Dialog) 지원.' },
-            { id: '1.21.5', label: '1.21.5', format: 71, major: 71, minor: 0, note: '데이터팩 포맷 71.' },
-            { id: '1.21.4', label: '1.21.4', format: 61, major: 61, minor: 0, note: '데이터팩 포맷 61.' },
-            { id: '1.21.3', label: '1.21.3', format: 57, major: 57, minor: 0, note: '데이터팩 포맷 57.' },
-            { id: '1.21.2', label: '1.21.2', format: 57, major: 57, minor: 0, note: '데이터팩 포맷 57.' },
-            { id: '1.21.1', label: '1.21.1', format: 48, major: 48, minor: 0, note: '데이터팩 포맷 48. 단수형 폴더 구조 적용.' },
-            { id: '1.21', label: '1.21 (Tricky Trials)', format: 48, major: 48, minor: 0, note: '데이터팩 포맷 48.' },
-            { id: '1.20.6', label: '1.20.6', format: 41, major: 41, minor: 0, note: '데이터팩 포맷 41. 아이템 컴포넌트(components) 도입.' },
-            { id: '1.20.5', label: '1.20.5', format: 41, major: 41, minor: 0, note: '데이터팩 포맷 41.' },
-            { id: '1.20.4', label: '1.20.4', format: 26, major: 26, minor: 0, note: '데이터팩 포맷 26.' },
-            { id: '1.20.3', label: '1.20.3', format: 26, major: 26, minor: 0, note: '데이터팩 포맷 26.' },
-            { id: '1.20.2', label: '1.20.2', format: 18, major: 18, minor: 0, note: '데이터팩 포맷 18.' },
-            { id: '1.20.1', label: '1.20.1', format: 15, major: 15, minor: 0, note: '데이터팩 포맷 15.' },
-            { id: '1.20', label: '1.20 (Trails & Tales)', format: 15, major: 15, minor: 0, note: '데이터팩 포맷 15.' },
-            { id: '1.19.4', label: '1.19.4', format: 12, major: 12, minor: 0, note: '피해 유형(Damage Type) 지원.' },
-            { id: '1.19.3', label: '1.19.3', format: 10, major: 10, minor: 0, note: '데이터팩 포맷 10.' },
-            { id: '1.19.2', label: '1.19.2', format: 10, major: 10, minor: 0, note: '데이터팩 포맷 10.' },
-            { id: '1.19.1', label: '1.19.1', format: 10, major: 10, minor: 0, note: '데이터팩 포맷 10.' },
-            { id: '1.19', label: '1.19 (The Wild Update)', format: 10, major: 10, minor: 0, note: '데이터팩 포맷 10.' },
-            { id: '1.18.2', label: '1.18.2', format: 9, major: 9, minor: 0, note: '구조물 및 세트 지원.' },
-            { id: '1.18.1', label: '1.18.1', format: 8, major: 8, minor: 0, note: '데이터팩 포맷 8.' },
-            { id: '1.18', label: '1.18 (Caves & Cliffs II)', format: 8, major: 8, minor: 0, note: '데이터팩 포맷 8.' },
-            { id: '1.17.1', label: '1.17.1', format: 7, major: 7, minor: 0, note: '데이터팩 포맷 7.' },
-            { id: '1.17', label: '1.17 (Caves & Cliffs I)', format: 7, major: 7, minor: 0, note: '아이템 수정자 도입.' },
-            { id: '1.16.5', label: '1.16.5', format: 6, major: 6, minor: 0, note: '데이터팩 포맷 6.' },
-            { id: '1.16.4', label: '1.16.4', format: 6, major: 6, minor: 0, note: '데이터팩 포맷 6.' },
-            { id: '1.16.3', label: '1.16.3', format: 6, major: 6, minor: 0, note: '데이터팩 포맷 6.' },
-            { id: '1.16.2', label: '1.16.2', format: 6, major: 6, minor: 0, note: '차원 및 바이옴 지원.' },
-            { id: '1.16.1', label: '1.16.1', format: 5, major: 5, minor: 0, note: '데이터팩 포맷 5.' },
-            { id: '1.16', label: '1.16 (Nether Update)', format: 5, major: 5, minor: 0, note: '데이터팩 포맷 5.' },
-            { id: '1.15.2', label: '1.15.2', format: 5, major: 5, minor: 0, note: '데이터팩 포맷 5.' },
-            { id: '1.15.1', label: '1.15.1', format: 5, major: 5, minor: 0, note: '데이터팩 포맷 5.' },
-            { id: '1.15', label: '1.15 (Buzzy Bees)', format: 5, major: 5, minor: 0, note: '조건부 술어(Predicate) 도입.' },
-            { id: '1.14.4', label: '1.14.4', format: 4, major: 4, minor: 0, note: '데이터팩 포맷 4.' },
-            { id: '1.14.3', label: '1.14.3', format: 4, major: 4, minor: 0, note: '데이터팩 포맷 4.' },
-            { id: '1.14.2', label: '1.14.2', format: 4, major: 4, minor: 0, note: '데이터팩 포맷 4.' },
-            { id: '1.14.1', label: '1.14.1', format: 4, major: 4, minor: 0, note: '데이터팩 포맷 4.' },
-            { id: '1.14', label: '1.14 (Village & Pillage)', format: 4, major: 4, minor: 0, note: '데이터팩 포맷 4.' },
-            { id: '1.13.2', label: '1.13.2', format: 4, major: 4, minor: 0, note: '데이터팩 포맷 4.' },
-            { id: '1.13.1', label: '1.13.1', format: 4, major: 4, minor: 0, note: '데이터팩 포맷 4.' },
-            { id: '1.13', label: '1.13 (최초 도입)', format: 4, major: 4, minor: 0, note: '데이터팩 최초 도입 버전.' }
+            { id: '1.21.6', label: '1.21.6', format: 80, major: 80, minor: 0, note: '데이터팩 포맷 80. 다이얼로그 지원.' },
+            { id: '1.21.1', label: '1.21.1', format: 48, major: 48, minor: 0, note: '데이터팩 포맷 48. 단수형 폴더.' },
+            { id: '1.21', label: '1.21 (Tricky Trials)', format: 48, major: 48, minor: 0, note: '포맷 48.' },
+            { id: '1.20.6', label: '1.20.6', format: 41, major: 41, minor: 0, note: '포맷 41 (아이템 컴포넌트).' },
+            { id: '1.20.4', label: '1.20.4', format: 26, major: 26, minor: 0, note: '포맷 26.' },
+            { id: '1.20.1', label: '1.20.1', format: 15, major: 15, minor: 0, note: '포맷 15.' },
+            { id: '1.19.4', label: '1.19.4', format: 12, major: 12, minor: 0, note: '포맷 12.' },
+            { id: '1.19', label: '1.19', format: 10, major: 10, minor: 0, note: '포맷 10.' },
+            { id: '1.18.2', label: '1.18.2', format: 9, major: 9, minor: 0, note: '포맷 9.' },
+            { id: '1.17', label: '1.17', format: 7, major: 7, minor: 0, note: '포맷 7.' },
+            { id: '1.16', label: '1.16', format: 5, major: 5, minor: 0, note: '포맷 5.' },
+            { id: '1.15', label: '1.15', format: 5, major: 5, minor: 0, note: '포맷 5.' },
+            { id: '1.14', label: '1.14', format: 4, major: 4, minor: 0, note: '포맷 4.' },
+            { id: '1.13', label: '1.13', format: 4, major: 4, minor: 0, note: '포맷 4 (최초 도입).' }
         ];
 
         const MC_ITEMS_DB = [
-            { id: 'minecraft:diamond', name: '다이아몬드', cat: 'ore', minFormat: 4, wikiImg: 'Diamond.png' },
-            { id: 'minecraft:emerald', name: '에메랄드', cat: 'ore', minFormat: 4, wikiImg: 'Emerald.png' },
-            { id: 'minecraft:gold_ingot', name: '금 주괴', cat: 'ore', minFormat: 4, wikiImg: 'Gold_Ingot.png' },
-            { id: 'minecraft:iron_ingot', name: '철 주괴', cat: 'ore', minFormat: 4, wikiImg: 'Iron_Ingot.png' },
-            { id: 'minecraft:netherite_ingot', name: '네더라이트 주괴', cat: 'ore', minFormat: 5, wikiImg: 'Netherite_Ingot.png' },
-            { id: 'minecraft:copper_ingot', name: '구리 주괴', cat: 'ore', minFormat: 7, wikiImg: 'Copper_Ingot.png' },
-            { id: 'minecraft:diamond_sword', name: '다이아몬드 검', cat: 'tool', minFormat: 4, wikiImg: 'Diamond_Sword.png' },
-            { id: 'minecraft:diamond_pickaxe', name: '다이아몬드 곡괭이', cat: 'tool', minFormat: 4, wikiImg: 'Diamond_Pickaxe.png' },
-            { id: 'minecraft:netherite_sword', name: '네더라이트 검', cat: 'tool', minFormat: 5, wikiImg: 'Netherite_Sword.png' },
-            { id: 'minecraft:mace', name: '철퇴 (1.21+)', cat: 'tool', minFormat: 48, wikiImg: 'Mace.png' },
-            { id: 'minecraft:oak_planks', name: '참나무 판자', cat: 'block', minFormat: 4, wikiImg: 'Oak_Planks.png' },
-            { id: 'minecraft:cobblestone', name: '조약돌', cat: 'block', minFormat: 4, wikiImg: 'Cobblestone.png' },
-            { id: 'minecraft:obsidian', name: '흑요석', cat: 'block', minFormat: 4, wikiImg: 'Obsidian.png' },
-            { id: 'minecraft:diamond_block', name: '다이아몬드 블록', cat: 'block', minFormat: 4, wikiImg: 'Block_of_Diamond.png' },
-            { id: 'minecraft:apple', name: '사과', cat: 'food', minFormat: 4, wikiImg: 'Apple.png' },
-            { id: 'minecraft:golden_apple', name: '황금 사과', cat: 'food', minFormat: 4, wikiImg: 'Golden_Apple.png' },
-            { id: 'minecraft:enchanted_golden_apple', name: '마법이 부여된 황금 사과', cat: 'food', minFormat: 4, wikiImg: 'Enchanted_Golden_Apple.png' },
-            { id: 'minecraft:stick', name: '막대기', cat: 'misc', minFormat: 4, wikiImg: 'Stick.png' },
-            { id: 'minecraft:string', name: '실', cat: 'misc', minFormat: 4, wikiImg: 'String.png' }
+            { id: 'minecraft:diamond', name: '다이아몬드', cat: 'ore', wikiImg: 'Diamond.png' },
+            { id: 'minecraft:emerald', name: '에메랄드', cat: 'ore', wikiImg: 'Emerald.png' },
+            { id: 'minecraft:gold_ingot', name: '금 주괴', cat: 'ore', wikiImg: 'Gold_Ingot.png' },
+            { id: 'minecraft:iron_ingot', name: '철 주괴', cat: 'ore', wikiImg: 'Iron_Ingot.png' },
+            { id: 'minecraft:netherite_ingot', name: '네더라이트 주괴', cat: 'ore', wikiImg: 'Netherite_Ingot.png' },
+            { id: 'minecraft:diamond_sword', name: '다이아몬드 검', cat: 'tool', wikiImg: 'Diamond_Sword.png' },
+            { id: 'minecraft:diamond_pickaxe', name: '다이아몬드 곡괭이', cat: 'tool', wikiImg: 'Diamond_Pickaxe.png' },
+            { id: 'minecraft:mace', name: '철퇴 (1.21+)', cat: 'tool', wikiImg: 'Mace.png' },
+            { id: 'minecraft:oak_planks', name: '참나무 판자', cat: 'block', wikiImg: 'Oak_Planks.png' },
+            { id: 'minecraft:obsidian', name: '흑요석', cat: 'block', wikiImg: 'Obsidian.png' },
+            { id: 'minecraft:apple', name: '사과', cat: 'food', wikiImg: 'Apple.png' },
+            { id: 'minecraft:golden_apple', name: '황금 사과', cat: 'food', wikiImg: 'Golden_Apple.png' },
+            { id: 'minecraft:nether_star', name: '네더의 별', cat: 'misc', wikiImg: 'Nether_Star.png' }
         ];
 
         const FEATURE_CATEGORIES = [
@@ -329,8 +293,6 @@
             const cleanId = itemId.trim().toLowerCase();
             const found = MC_ITEMS_DB.find(i => i.id === cleanId);
             const shortName = cleanId.replace(/^minecraft:/, '');
-            
-            // Minecraft Wiki 공식 정적 이미지 호스팅 URL 활용 (원본 텍스처)
             let wikiFileName = found && found.wikiImg ? found.wikiImg : (shortName.charAt(0).toUpperCase() + shortName.slice(1) + '.png');
             const textureUrl = `https://minecraft.wiki/images/thumb/${wikiFileName}/120px-${wikiFileName}`;
 
@@ -357,7 +319,7 @@
 
         function resolveFilePath(file, versionObj) {
             if (file.id === 'pack.mcmeta') return 'pack.mcmeta';
-            if (file.categoryId === 'load_tick') {
+            if (file.categoryId === 'load_tag' || file.categoryId === 'tick_tag') {
                 const tagFolder = versionObj.major >= 48 ? 'tags/function' : 'tags/functions';
                 return `data/minecraft/${tagFolder}/${file.name}.json`;
             }
@@ -381,9 +343,9 @@
                 case 'load_tag':
                 case 'tick_tag':
                 case 'tags':
-                    return { replace: false, values: [`${namespace}:init`] };
+                    return { replace: false, values: [] };
                 case 'function':
-                    return { commands: '# 커스텀 함수\nsay §a작동 확인!' };
+                    return { commands: '# 커스텀 함수 스크립트\nsay §a데이터팩이 정상적으로 로드되었습니다!' };
                 case 'recipe':
                     return {
                         recipeType: 'minecraft:crafting_shaped',
@@ -410,27 +372,9 @@
                         trigger: 'minecraft:tick'
                     };
                 case 'predicate':
-                    return { condition: 'minecraft:weather_check', raining: true, thundering: false };
+                    return { condition: 'minecraft:weather_check', raining: true, thundering: false, chance: 0.5 };
                 case 'item_modifier':
                     return { function: 'minecraft:set_name', name: { text: '수정된 아이템' } };
-                case 'dimension':
-                    return { type: 'minecraft:overworld' };
-                case 'worldgen_biome':
-                    return { temperature: 0.8, downfall: 0.4 };
-                case 'structure_set':
-                    return { spacing: 32, separation: 8 };
-                case 'damage_type':
-                    return { message_id: `${namespace}.custom`, exhaustion: 0.1 };
-                case 'trim_pattern':
-                    return { asset_id: `${namespace}:${name}`, template_item: 'minecraft:coast_armor_trim_smithing_template' };
-                case 'enchantment':
-                    return { description: { text: '커스텀 인챈트' }, weight: 5, max_level: 3 };
-                case 'jukebox_song':
-                    return { sound_event: 'minecraft:music_disc.pigstep', length_in_seconds: 120.0 };
-                case 'wolf_variant':
-                    return { wild_texture: 'minecraft:entity/wolf/wolf_ashen' };
-                case 'dialog':
-                    return { title: { text: '안내' } };
                 default:
                     return {};
             }
@@ -443,7 +387,12 @@
             const d = file.data;
             let obj = {};
 
-            if (file.categoryId === 'loot_table') {
+            if (file.categoryId === 'load_tag' || file.categoryId === 'tick_tag' || file.categoryId === 'tags') {
+                obj = {
+                    replace: Boolean(d.replace),
+                    values: Array.isArray(d.values) ? d.values : []
+                };
+            } else if (file.categoryId === 'loot_table') {
                 const entry = {
                     type: 'minecraft:item',
                     name: d.item || 'minecraft:diamond',
@@ -460,6 +409,14 @@
                     } else {
                         entry.functions.push({ function: 'minecraft:set_nbt', tag: d.nbtString });
                     }
+                }
+                if (d.lootingEnchant && versionObj.major >= 5) {
+                    entry.functions.push({
+                        function: 'minecraft:apply_bonus',
+                        enchantment: 'minecraft:looting',
+                        formula: 'minecraft:binomial_with_bonus_count',
+                        parameters: { extra: 1, probability: 0.1 }
+                    });
                 }
                 obj = {
                     type: d.lootType || 'minecraft:chest',
@@ -484,18 +441,53 @@
                         icon: { [iconKey]: d.iconItem || 'minecraft:nether_star' },
                         title: { text: d.title || '발전 과제' },
                         description: { text: d.description || '설명' },
-                        frame: d.frame || 'task'
+                        frame: d.frame || 'task',
+                        show_toast: d.showToast !== false,
+                        announce_to_chat: d.announceToChat !== false,
+                        hidden: Boolean(d.hidden)
                     },
                     criteria: {
-                        requirement: { trigger: d.trigger || 'minecraft:tick' }
+                        requirement: {
+                            trigger: d.trigger || 'minecraft:tick',
+                            conditions: d.conditionsObj ? JSON.parse(d.conditionsObj || '{}') : {}
+                        }
                     }
                 };
             } else if (file.categoryId === 'predicate') {
-                obj = {
-                    condition: d.condition || 'minecraft:weather_check',
-                    raining: Boolean(d.raining),
-                    thundering: Boolean(d.thundering)
-                };
+                const cond = d.condition || 'minecraft:weather_check';
+                obj = { condition: cond };
+                if (cond === 'minecraft:weather_check') {
+                    obj.raining = Boolean(d.raining);
+                    obj.thundering = Boolean(d.thundering);
+                } else if (cond === 'minecraft:random_chance') {
+                    obj.chance = Number(d.chance) || 0.5;
+                } else if (cond === 'minecraft:entity_properties') {
+                    obj.entity = d.entity || 'this';
+                    obj.predicate = {};
+                    const flags = {};
+                    if (d.flagSneaking) flags.is_sneaking = true;
+                    if (d.flagSprinting) flags.is_sprinting = true;
+                    if (d.flagSwimming) flags.is_swimming = true;
+                    if (d.flagBaby) flags.is_baby = true;
+                    if (d.flagOnGround) flags.on_ground = true;
+                    if (Object.keys(flags).length > 0) obj.predicate.flags = flags;
+                    if (d.entityTypeFilter && d.entityTypeFilter.trim()) obj.predicate.type = d.entityTypeFilter.trim();
+                } else if (cond === 'minecraft:random_chance_with_looting') {
+                    obj.chance = Number(d.chance) || 0.5;
+                    obj.looting_multiplier = Number(d.looting_multiplier) || 0.05;
+                } else if (cond === 'minecraft:time_check') {
+                    obj.value = Number(d.timeValue) || 0;
+                } else if (cond === 'minecraft:reference') {
+                    obj.name = d.refName || 'minecraft:example';
+                } else if (cond === 'minecraft:all_of' || cond === 'minecraft:any_of') {
+                    obj.terms = Array.isArray(d.terms) ? d.terms : [];
+                } else if (cond === 'minecraft:inverted') {
+                    obj.term = d.term || { condition: 'minecraft:weather_check', raining: true };
+                } else {
+                    if (d.chance !== undefined) obj.chance = Number(d.chance);
+                    if (d.raining !== undefined) obj.raining = Boolean(d.raining);
+                    if (d.thundering !== undefined) obj.thundering = Boolean(d.thundering);
+                }
             } else {
                 obj = d;
             }
@@ -561,7 +553,7 @@
             container.innerHTML = state.files.map(f => `
                 <div onclick="selectFile('${f.id}')" class="group flex items-center justify-between gap-2 px-3 py-2 rounded-xl border cursor-pointer transition ${f.id === state.activeFileId ? 'bg-emerald-950/50 border-emerald-500/60 text-emerald-200' : 'bg-mc-bg hover:bg-mc-card border-mc-border text-gray-300'}">
                     <div class="truncate font-semibold text-[11px]">${escapeHtml(resolveFilePath(f, v))}</div>
-                    ${f.id !== 'pack.mcmeta' ? `<button onclick="event.stopPropagation(); deleteFile('${f.id}')" class="text-rose-400 text-[11px]">✕</button>` : ''}
+                    ${f.id !== 'pack.mcmeta' ? `<button onclick="event.stopPropagation(); deleteFile('${f.id}')" class="text-rose-400 hover:text-rose-300 text-[11px] p-0.5 cursor-pointer">✕</button>` : ''}
                 </div>
             `).join('');
         }
@@ -645,7 +637,7 @@
 
             const mockFile = {
                 id: 'preview',
-                categoryId: cat.isSystemTag ? 'load_tick' : pendingCategoryId,
+                categoryId: cat.isSystemTag ? pendingCategoryId : pendingCategoryId,
                 namespace: ns,
                 name: name,
                 subTagType: subTag
@@ -661,7 +653,7 @@
             const name = document.getElementById('modalFileNameInput').value.trim().toLowerCase().replace(/[^a-z0-9_/-]/g, '') || 'example';
             const subTag = document.getElementById('modalTagTypeSelect').value;
 
-            const actualCatId = cat.isSystemTag ? 'load_tick' : pendingCategoryId;
+            const actualCatId = pendingCategoryId;
             const newId = `${actualCatId}_${ns}_${name}_${Date.now()}`;
             const data = createDefaultFileData(pendingCategoryId, ns, name, v);
             const newFile = {
@@ -715,6 +707,40 @@
             file.rawText = serializeFileToText(file, getCurrentVersion());
         }
 
+        // Tag value helpers
+        function addTagValue(fileId) {
+            const file = state.files.find(f => f.id === fileId);
+            if (!file) return;
+            if (!Array.isArray(file.data.values)) file.data.values = [];
+            file.data.values.push(`${state.defaultNamespace}:main`);
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderVisualBuilder();
+        }
+
+        function removeTagValue(fileId, idx) {
+            const file = state.files.find(f => f.id === fileId);
+            if (!file) return;
+            file.data.values.splice(idx, 1);
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderVisualBuilder();
+        }
+
+        function updateTagValueInput(fileId, idx, val) {
+            const file = state.files.find(f => f.id === fileId);
+            if (!file) return;
+            file.data.values[idx] = val.trim();
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+        }
+
+        function updateTagValueSelect(fileId, idx, val) {
+            if (!val) return;
+            const file = state.files.find(f => f.id === fileId);
+            if (!file) return;
+            file.data.values[idx] = val;
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderVisualBuilder();
+        }
+
         function renderVisualBuilder() {
             const v = getCurrentVersion();
             const file = state.files.find(f => f.id === state.activeFileId);
@@ -740,27 +766,55 @@
                 return;
             }
 
-            if (file.categoryId === 'loot_table') {
+            // Load / Tick / Tags UI (기존 UI 레이아웃 유지)
+            if (file.categoryId === 'load_tag' || file.categoryId === 'tick_tag' || file.categoryId === 'tags') {
                 const d = file.data;
+                if (!Array.isArray(d.values)) d.values = [];
+                const functionFiles = state.files.filter(f => f.categoryId === 'function');
+                
                 container.innerHTML = `
-                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-3 text-xs">
-                        <div class="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-[11px] leading-relaxed">
-                            💡 <strong>바닐라 오버라이드 경고:</strong> 바닐라 드롭을 덮어쓰려면 네임스페이스를 <strong>minecraft</strong>로 지정하세요.
-                        </div>
+                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-4 text-xs">
                         <div>
-                            <label class="block font-semibold text-gray-300 mb-1">경로 설정</label>
+                            <label class="block font-semibold text-gray-300 mb-1">태그 파일 경로</label>
                             <div class="flex gap-2 font-mono">
-                                <input type="text" id="lootNsInput" value="${escapeHtml(file.namespace)}" oninput="updatePath('lootNsInput', 'lootNameInput')" class="w-1/3 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300">
+                                <input type="text" value="${escapeHtml(file.namespace)}" disabled class="w-1/3 bg-mc-card/50 border border-mc-border rounded-lg px-3 py-2 text-gray-400">
                                 <span class="self-center text-gray-400">:</span>
-                                <input type="text" id="lootNameInput" value="${escapeHtml(file.name)}" oninput="updatePath('lootNsInput', 'lootNameInput')" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                                <input type="text" value="${escapeHtml(file.name)}" disabled class="flex-1 bg-mc-card/50 border border-mc-border rounded-lg px-3 py-2 text-gray-400">
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-gray-300 mb-1">추첨 횟수 (rolls)</label><input type="number" value="${d.rolls || 1}" oninput="handleFieldInput('rolls', Number(this.value))" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono"></div>
-                            <div><label class="block text-gray-300 mb-1">행운 추가 (bonus_rolls)</label><input type="number" value="${d.bonusRolls || 0}" oninput="handleFieldInput('bonusRolls', Number(this.value))" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono"></div>
+                        
+                        <div class="space-y-2 pt-2 border-t border-mc-border">
+                            <div class="flex items-center justify-between">
+                                <label class="font-semibold text-gray-200">실행할 함수 목록 (values)</label>
+                                <button onclick="addTagValue('${file.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer">+ 함수 추가</button>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                ${d.values.length === 0 ? `<p class="text-gray-500 italic text-[11px]">등록된 함수가 없습니다. 함수를 추가해주세요.</p>` : ''}
+                                ${d.values.map((val, idx) => `
+                                    <div class="flex items-center gap-2 bg-mc-card p-2 rounded-xl border border-mc-border">
+                                        <select onchange="updateTagValueSelect('${file.id}', ${idx}, this.value)" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1.5 text-xs text-emerald-300 font-mono cursor-pointer">
+                                            <option value="">-- 프로젝트 함수 선택 --</option>
+                                            ${functionFiles.map(f => {
+                                                const fullId = `${f.namespace}:${f.name}`;
+                                                return `<option value="${fullId}" ${val === fullId ? 'selected' : ''}>${fullId}</option>`;
+                                            }).join('')}
+                                        </select>
+                                        <input type="text" value="${escapeHtml(val)}" oninput="updateTagValueInput('${file.id}', ${idx}, this.value)" placeholder="namespace:function_name" class="flex-1 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-white">
+                                        <button onclick="removeTagValue('${file.id}', ${idx})" class="px-2.5 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 font-bold text-xs cursor-pointer">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
-                        <div><label class="block text-gray-300 mb-1">드롭 아이템 ID</label><input type="text" value="${escapeHtml(d.item || '')}" oninput="handleFieldInput('item', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono"></div>
-                    </div>`;
+
+                        <div class="pt-2 border-t border-mc-border">
+                            <label class="flex items-center gap-2 text-gray-300 cursor-pointer">
+                                <input type="checkbox" ${d.replace ? 'checked' : ''} onchange="handleFieldInput('replace', this.checked)">
+                                <span>기본 태그 덮어쓰기 (replace: true)</span>
+                            </label>
+                        </div>
+                    </div>
+                `;
                 return;
             }
 
@@ -781,19 +835,19 @@
                         </div>
                         <div>
                             <label class="block font-semibold text-gray-300 mb-1">레시피 유형</label>
-                            <select onchange="handleFieldInput('recipeType', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                            <select onchange="handleFieldInput('recipeType', this.value); renderVisualBuilder();" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white cursor-pointer">
                                 <option value="minecraft:crafting_shaped" ${d.recipeType === 'minecraft:crafting_shaped' ? 'selected' : ''}>모양 있는 조합 (Shaped)</option>
                                 <option value="minecraft:crafting_shapeless" ${d.recipeType === 'minecraft:crafting_shapeless' ? 'selected' : ''}>모양 없는 조합 (Shapeless)</option>
                                 <option value="minecraft:smelting" ${d.recipeType === 'minecraft:smelting' ? 'selected' : ''}>화로 제련 (Smelting)</option>
                             </select>
                         </div>
 
+                        ${d.recipeType !== 'minecraft:smelting' ? `
                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                            <!-- 좌측: 텍스트 입력 슬롯 9개 -->
                             <div class="md:col-span-7 space-y-2">
-                                <label class="block font-semibold text-gray-300">3x3 재료 아이템 ID 입력</label>
+                                <label class="block font-semibold text-gray-300">재료 아이템 ID 입력</label>
                                 <div class="grid grid-cols-3 gap-1.5 font-mono">
-                                    ${Array.from({length: 9}).map((_, idx) => `
+                                    ${Array.from({length: d.recipeType === 'minecraft:crafting_shapeless' ? 9 : 9}).map((_, idx) => `
                                         <div class="flex flex-col">
                                             <span class="text-[9px] text-gray-400 mb-0.5">슬롯 ${idx+1}</span>
                                             <input type="text" value="${escapeHtml(d.gridItems[idx] || '')}" oninput="updateRecipeGridInput(${idx}, this.value)" placeholder="minecraft:..." class="bg-mc-card border border-mc-border rounded-lg px-2 py-1.5 text-emerald-300 text-[11px] focus:outline-none focus:border-emerald-500">
@@ -801,10 +855,8 @@
                                     `).join('')}
                                 </div>
                             </div>
-
-                            <!-- 우측: 3x3 제작대 미니 프리뷰 -->
                             <div class="md:col-span-5 flex flex-col items-center justify-center p-3 rounded-xl bg-mc-card border border-mc-border">
-                                <span class="font-semibold text-gray-300 mb-2">제작대 프리뷰</span>
+                                <span class="font-semibold text-gray-300 mb-2">조합대 프리뷰</span>
                                 <div class="grid grid-cols-3 gap-1.5 bg-mc-bg p-2 rounded-xl border border-mc-border">
                                     ${Array.from({length: 9}).map((_, idx) => `
                                         <div class="w-10 h-10 rounded-lg bg-mc-panel border border-mc-border flex items-center justify-center craft-slot relative">
@@ -814,6 +866,12 @@
                                 </div>
                             </div>
                         </div>
+                        ` : `
+                        <div class="space-y-2">
+                            <label class="block font-semibold text-gray-300">제련할 재료 아이템 ID</label>
+                            <input type="text" value="${escapeHtml(d.gridItems?.[0] || '')}" oninput="updateRecipeGridInput(0, this.value)" placeholder="minecraft:raw_iron" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono">
+                        </div>
+                        `}
 
                         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-mc-border">
                             <div>
@@ -829,29 +887,11 @@
                 return;
             }
 
-            if (file.categoryId === 'advancement') {
-                const d = file.data;
-                container.innerHTML = `
-                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-3 text-xs">
-                        <div>
-                            <label class="block font-semibold text-gray-300 mb-1">경로 설정</label>
-                            <div class="flex gap-2 font-mono">
-                                <input type="text" id="advNsInput" value="${escapeHtml(file.namespace)}" oninput="updatePath('advNsInput', 'advNameInput')" class="w-1/3 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300">
-                                <span class="self-center text-gray-400">:</span>
-                                <input type="text" id="advNameInput" value="${escapeHtml(file.name)}" oninput="updatePath('advNsInput', 'advNameInput')" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
-                            </div>
-                        </div>
-                        <div><label class="block text-gray-300 mb-1">과제 제목</label><input type="text" value="${escapeHtml(d.title || '')}" oninput="handleFieldInput('title', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white"></div>
-                        <div><label class="block text-gray-300 mb-1">과제 설명</label><input type="text" value="${escapeHtml(d.description || '')}" oninput="handleFieldInput('description', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white"></div>
-                        <div><label class="block text-gray-300 mb-1">아이콘 아이템 ID</label><input type="text" value="${escapeHtml(d.iconItem || '')}" oninput="handleFieldInput('iconItem', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono"></div>
-                    </div>`;
-                return;
-            }
-
             if (file.categoryId === 'predicate') {
                 const d = file.data;
+                const cond = d.condition || 'minecraft:weather_check';
                 container.innerHTML = `
-                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-3 text-xs">
+                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-4 text-xs">
                         <div>
                             <label class="block font-semibold text-gray-300 mb-1">경로 설정</label>
                             <div class="flex gap-2 font-mono">
@@ -860,14 +900,234 @@
                                 <input type="text" id="predNameInput" value="${escapeHtml(file.name)}" oninput="updatePath('predNsInput', 'predNameInput')" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
                             </div>
                         </div>
-                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer pt-2">
-                            <input type="checkbox" ${d.raining ? 'checked' : ''} onchange="handleFieldInput('raining', this.checked)">
-                            <span>비가 오고 있음 (raining)</span>
-                        </label>
-                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
-                            <input type="checkbox" ${d.thundering ? 'checked' : ''} onchange="handleFieldInput('thundering', this.checked)">
-                            <span>천둥이 치고 있음 (thundering)</span>
-                        </label>
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">조건 유형 (Condition)</label>
+                            <select onchange="handleFieldInput('condition', this.value); renderVisualBuilder();" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono cursor-pointer">
+                                <option value="minecraft:weather_check" ${cond === 'minecraft:weather_check' ? 'selected' : ''}>minecraft:weather_check (날씨 검사)</option>
+                                <option value="minecraft:random_chance" ${cond === 'minecraft:random_chance' ? 'selected' : ''}>minecraft:random_chance (확률 검사)</option>
+                                <option value="minecraft:entity_properties" ${cond === 'minecraft:entity_properties' ? 'selected' : ''}>minecraft:entity_properties (엔티티 속성 / 웅크리기 감지)</option>
+                                <option value="minecraft:location_check" ${cond === 'minecraft:location_check' ? 'selected' : ''}>minecraft:location_check (위치 검사)</option>
+                                <option value="minecraft:time_check" ${cond === 'minecraft:time_check' ? 'selected' : ''}>minecraft:time_check (게임 시간 검사)</option>
+                                <option value="minecraft:random_chance_with_looting" ${cond === 'minecraft:random_chance_with_looting' ? 'selected' : ''}>minecraft:random_chance_with_looting (약탈 확률)</option>
+                                <option value="minecraft:survives_explosion" ${cond === 'minecraft:survives_explosion' ? 'selected' : ''}>minecraft:survives_explosion (폭발 생존)</option>
+                                <option value="minecraft:block_state_property" ${cond === 'minecraft:block_state_property' ? 'selected' : ''}>minecraft:block_state_property (블록 상태)</option>
+                                <option value="minecraft:match_tool" ${cond === 'minecraft:match_tool' ? 'selected' : ''}>minecraft:match_tool (사용 중인 도구)</option>
+                                <option value="minecraft:damage_source_properties" ${cond === 'minecraft:damage_source_properties' ? 'selected' : ''}>minecraft:damage_source_properties (피해 원인)</option>
+                                <option value="minecraft:killed_by_player" ${cond === 'minecraft:killed_by_player' ? 'selected' : ''}>minecraft:killed_by_player (플레이어에 의해 사망)</option>
+                                <option value="minecraft:entity_scores" ${cond === 'minecraft:entity_scores' ? 'selected' : ''}>minecraft:entity_scores (스코어보드 점수)</option>
+                                <option value="minecraft:all_of" ${cond === 'minecraft:all_of' ? 'selected' : ''}>minecraft:all_of (AND 복합 조건)</option>
+                                <option value="minecraft:any_of" ${cond === 'minecraft:any_of' ? 'selected' : ''}>minecraft:any_of (OR 복합 조건)</option>
+                                <option value="minecraft:inverted" ${cond === 'minecraft:inverted' ? 'selected' : ''}>minecraft:inverted (NOT 반전 조건)</option>
+                                <option value="minecraft:reference" ${cond === 'minecraft:reference' ? 'selected' : ''}>minecraft:reference (다른 프리디케이트 참조)</option>
+                            </select>
+                        </div>
+                        ${cond === 'minecraft:weather_check' ? `
+                            <div class="space-y-2 pt-2 border-t border-mc-border">
+                                <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                    <input type="checkbox" ${d.raining ? 'checked' : ''} onchange="handleFieldInput('raining', this.checked)">
+                                    <span>비가 오고 있음 (raining)</span>
+                                </label>
+                                <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                    <input type="checkbox" ${d.thundering ? 'checked' : ''} onchange="handleFieldInput('thundering', this.checked)">
+                                    <span>천둥이 치고 있음 (thundering)</span>
+                                </label>
+                            </div>
+                        ` : ''}
+                        ${cond === 'minecraft:entity_properties' ? `
+                            <div class="space-y-3 pt-2 border-t border-mc-border">
+                                <div>
+                                    <label class="block font-semibold text-gray-300 mb-1">대상 엔티티 (entity)</label>
+                                    <select onchange="handleFieldInput('entity', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono cursor-pointer">
+                                        <option value="this" ${(d.entity || 'this') === 'this' ? 'selected' : ''}>this (이벤트 대상)</option>
+                                        <option value="killer" ${d.entity === 'killer' ? 'selected' : ''}>killer (킬러)</option>
+                                        <option value="direct_killer" ${d.entity === 'direct_killer' ? 'selected' : ''}>direct_killer (직접 피해를 준 주체)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-gray-300 mb-1">엔티티 타입 필터 (type)</label>
+                                    <input type="text" value="${escapeHtml(d.entityTypeFilter || '')}" oninput="handleFieldInput('entityTypeFilter', this.value)" placeholder="minecraft:player" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono">
+                                </div>
+                                <div class="space-y-2 pt-2 border-t border-mc-border">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block font-semibold text-gray-300">엔티티 상태 플래그 (flags)</label>
+                                        <span class="text-[10px] text-emerald-400 font-mono">복수 선택 시 동시 감지(AND)</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.flagSneaking ? 'checked' : ''} onchange="handleFieldInput('flagSneaking', this.checked)">
+                                            <span>웅크리기 (is_sneaking)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.flagSprinting ? 'checked' : ''} onchange="handleFieldInput('flagSprinting', this.checked)">
+                                            <span>전력 질주 (is_sprinting)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.flagSwimming ? 'checked' : ''} onchange="handleFieldInput('flagSwimming', this.checked)">
+                                            <span>수영 중 (is_swimming)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.flagBaby ? 'checked' : ''} onchange="handleFieldInput('flagBaby', this.checked)">
+                                            <span>아기 동물 (is_baby)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${cond === 'minecraft:random_chance' ? `
+                            <div class="space-y-2 pt-2 border-t border-mc-border">
+                                <label class="block font-semibold text-gray-300 mb-1">성공 확률 (chance: 0.0 ~ 1.0)</label>
+                                <input type="number" step="0.01" min="0" max="1" value="${d.chance ?? 0.5}" oninput="handleFieldInput('chance', Number(this.value))" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono">
+                            </div>
+                        ` : ''}
+                        ${cond === 'minecraft:all_of' || cond === 'minecraft:any_of' ? `
+                            <div class="space-y-2 pt-2 border-t border-mc-border">
+                                <label class="block font-semibold text-gray-300">복합 조건 목록 (terms)</label>
+                                <p class="text-[11px] text-gray-400">하위 조건들의 배열을 JSON으로 정의합니다.</p>
+                                <textarea rows="4" oninput="try{handleFieldInput('terms', JSON.parse(this.value))}catch(e){}" class="w-full bg-mc-card border border-mc-border rounded-lg p-2 font-mono text-emerald-300 text-xs">${escapeHtml(JSON.stringify(d.terms || [], null, 2))}</textarea>
+                            </div>
+                        ` : ''}
+                    </div>`;
+                return;
+            }
+
+            if (file.categoryId === 'loot_table') {
+                const d = file.data;
+                container.innerHTML = `
+                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-4 text-xs">
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">경로 설정</label>
+                            <div class="flex gap-2 font-mono">
+                                <input type="text" id="lootNsInput" value="${escapeHtml(file.namespace)}" oninput="updatePath('lootNsInput', 'lootNameInput')" class="w-1/3 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300">
+                                <span class="self-center text-gray-400">:</span>
+                                <input type="text" id="lootNameInput" value="${escapeHtml(file.name)}" oninput="updatePath('lootNsInput', 'lootNameInput')" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">루트 테이블 유형 (type)</label>
+                            <select onchange="handleFieldInput('lootType', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white cursor-pointer font-mono">
+                                <option value="minecraft:chest" ${d.lootType === 'minecraft:chest' ? 'selected' : ''}>chest (상자)</option>
+                                <option value="minecraft:entity" ${d.lootType === 'minecraft:entity' ? 'selected' : ''}>entity (엔티티 드롭)</option>
+                                <option value="minecraft:block" ${d.lootType === 'minecraft:block' ? 'selected' : ''}>block (블록 드롭)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">기본 드롭 횟수 (rolls)</label>
+                                <input type="number" min="1" value="${d.rolls || 1}" oninput="handleFieldInput('rolls', Number(this.value))" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">보너스 횟수 (bonus_rolls)</label>
+                                <input type="number" min="0" value="${d.bonusRolls || 0}" oninput="handleFieldInput('bonusRolls', Number(this.value))" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono">
+                            </div>
+                        </div>
+                        <div class="space-y-2 pt-2 border-t border-mc-border">
+                            <label class="block font-semibold text-gray-300">드롭 아이템 설정</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" value="${escapeHtml(d.item || 'minecraft:diamond')}" oninput="handleFieldInput('item', this.value)" placeholder="minecraft:diamond" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono">
+                                <button type="button" onclick="openItemPicker('loot_item')" class="px-3 py-2 rounded-lg bg-mc-card hover:bg-gray-800 text-gray-200 border border-mc-border font-semibold cursor-pointer">🎒 선택</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">최소 수량 (min)</label>
+                                <input type="number" min="1" value="${d.minCount || 1}" oninput="handleFieldInput('minCount', Number(this.value))" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">최대 수량 (max)</label>
+                                <input type="number" min="1" value="${d.maxCount || 3}" oninput="handleFieldInput('maxCount', Number(this.value))" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">아이템 NBT / 컴포넌트 (JSON 문자열)</label>
+                            <input type="text" value="${escapeHtml(d.nbtString || '')}" oninput="handleFieldInput('nbtString', this.value)" placeholder='{"minecraft:custom_name": "\"특수 아이템\""}' class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono">
+                        </div>
+                        <div class="pt-1">
+                            <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                <input type="checkbox" ${d.lootingEnchant ? 'checked' : ''} onchange="handleFieldInput('lootingEnchant', this.checked)">
+                                <span>약탈(Looting) 인챈트 보너스 적용</span>
+                            </label>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (file.categoryId === 'advancement') {
+                const d = file.data;
+                container.innerHTML = `
+                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-4 text-xs">
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">경로 설정</label>
+                            <div class="flex gap-2 font-mono">
+                                <input type="text" id="advNsInput" value="${escapeHtml(file.namespace)}" oninput="updatePath('advNsInput', 'advNameInput')" class="w-1/3 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300">
+                                <span class="self-center text-gray-400">:</span>
+                                <input type="text" id="advNameInput" value="${escapeHtml(file.name)}" oninput="updatePath('advNsInput', 'advNameInput')" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">과제 제목 (title)</label>
+                                <input type="text" value="${escapeHtml(d.title || '')}" oninput="handleFieldInput('title', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">아이콘 아이템 (icon)</label>
+                                <input type="text" value="${escapeHtml(d.iconItem || 'minecraft:nether_star')}" oninput="handleFieldInput('iconItem', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">설명 (description)</label>
+                            <input type="text" value="${escapeHtml(d.description || '')}" oninput="handleFieldInput('description', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">과제 프레임 (frame)</label>
+                                <select onchange="handleFieldInput('frame', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono cursor-pointer">
+                                    <option value="task" ${d.frame === 'task' ? 'selected' : ''}>task (일반)</option>
+                                    <option value="goal" ${d.frame === 'goal' ? 'selected' : ''}>goal (목표)</option>
+                                    <option value="challenge" ${d.frame === 'challenge' ? 'selected' : ''}>challenge (도전 과제)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">달성 트리거 (trigger)</label>
+                                <select onchange="handleFieldInput('trigger', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono cursor-pointer">
+                                    <option value="minecraft:tick" ${(d.trigger || 'minecraft:tick') === 'minecraft:tick' ? 'selected' : ''}>minecraft:tick (매 틱마다 반복)</option>
+                                    <option value="minecraft:inventory_changed" ${d.trigger === 'minecraft:inventory_changed' ? 'selected' : ''}>minecraft:inventory_changed (인벤토리 변경)</option>
+                                    <option value="minecraft:player_hurt_entity" ${d.trigger === 'minecraft:player_hurt_entity' ? 'selected' : ''}>minecraft:player_hurt_entity (엔티티 공격)</option>
+                                    <option value="minecraft:player_killed_entity" ${d.trigger === 'minecraft:player_killed_entity' ? 'selected' : ''}>minecraft:player_killed_entity (엔티티 처치)</option>
+                                    <option value="minecraft:consumed_item" ${d.trigger === 'minecraft:consumed_item' ? 'selected' : ''}>minecraft:consumed_item (아이템 섭취/사용)</option>
+                                    <option value="minecraft:placed_block" ${d.trigger === 'minecraft:placed_block' ? 'selected' : ''}>minecraft:placed_block (블록 설치)</option>
+                                    <option value="minecraft:enter_block" ${d.trigger === 'minecraft:enter_block' ? 'selected' : ''}>minecraft:enter_block (블록 내부 진입)</option>
+                                    <option value="minecraft:location" ${d.trigger === 'minecraft:location' ? 'selected' : ''}>minecraft:location (특정 위치 도달)</option>
+                                    <option value="minecraft:slept_in_bed" ${d.trigger === 'minecraft:slept_in_bed' ? 'selected' : ''}>minecraft:slept_in_bed (침대에서 취침)</option>
+                                    <option value="minecraft:bred_animals" ${d.trigger === 'minecraft:bred_animals' ? 'selected' : ''}>minecraft:bred_animals (동물 교배)</option>
+                                    <option value="minecraft:fishing_rod_hooked" ${d.trigger === 'minecraft:fishing_rod_hooked' ? 'selected' : ''}>minecraft:fishing_rod_hooked (낚시 성공)</option>
+                                    <option value="minecraft:recipe_unlocked" ${d.trigger === 'minecraft:recipe_unlocked' ? 'selected' : ''}>minecraft:recipe_unlocked (레시피 해금)</option>
+                                    <option value="minecraft:used_totem" ${d.trigger === 'minecraft:used_totem' ? 'selected' : ''}>minecraft:used_totem (불사의 토템 사용)</option>
+                                    <option value="minecraft:summoned_entity" ${d.trigger === 'minecraft:summoned_entity' ? 'selected' : ''}>minecraft:summoned_entity (엔티티 소환)</option>
+                                    <option value="minecraft:target_hit" ${d.trigger === 'minecraft:target_hit' ? 'selected' : ''}>minecraft:target_hit (과녁 맞추기)</option>
+                                    <option value="minecraft:item_durability_changed" ${d.trigger === 'minecraft:item_durability_changed' ? 'selected' : ''}>minecraft:item_durability_changed (내구도 변경)</option>
+                                    <option value="minecraft:item_used_on_block" ${d.trigger === 'minecraft:item_used_on_block' ? 'selected' : ''}>minecraft:item_used_on_block (블록에 아이템 사용)</option>
+                                    <option value="minecraft:bee_nest_destroyed" ${d.trigger === 'minecraft:bee_nest_destroyed' ? 'selected' : ''}>minecraft:bee_nest_destroyed (벌집 파괴)</option>
+                                    <option value="minecraft:nether_travel" ${d.trigger === 'minecraft:nether_travel' ? 'selected' : ''}>minecraft:nether_travel (네더 이동)</option>
+                                    <option value="minecraft:voluntary_exile" ${d.trigger === 'minecraft:voluntary_exile' ? 'selected' : ''}>minecraft:voluntary_exile (불길한 기운 획득)</option>
+                                    <option value="minecraft:raid_win" ${d.trigger === 'minecraft:raid_win' ? 'selected' : ''}>minecraft:raid_win (습격 승리)</option>
+                                    <option value="minecraft:player_interacted_with_entity" ${d.trigger === 'minecraft:player_interacted_with_entity' ? 'selected' : ''}>minecraft:player_interacted_with_entity (엔티티 상호작용)</option>
+                                    <option value="minecraft:effects_changed" ${d.trigger === 'minecraft:effects_changed' ? 'selected' : ''}>minecraft:effects_changed (상태 효과 변경)</option>
+                                    <option value="minecraft:channeled_lightning" ${d.trigger === 'minecraft:channeled_lightning' ? 'selected' : ''}>minecraft:channeled_lightning (삼지창 번개 유도)</option>
+                                    <option value="minecraft:shot_crossbow" ${d.trigger === 'minecraft:shot_crossbow' ? 'selected' : ''}>minecraft:shot_crossbow (석궁 발사)</option>
+                                    <option value="minecraft:use_item" ${d.trigger === 'minecraft:use_item' ? 'selected' : ''}>minecraft:use_item (아이템 사용 시작)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="space-y-2 pt-2 border-t border-mc-border">
+                            <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                <input type="checkbox" ${d.showToast !== false ? 'checked' : ''} onchange="handleFieldInput('showToast', this.checked)">
+                                <span>화면 토스트 알림 표시 (show_toast)</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                <input type="checkbox" ${d.announceToChat !== false ? 'checked' : ''} onchange="handleFieldInput('announceToChat', this.checked)">
+                                <span>채팅창 공지 (announce_to_chat)</span>
+                            </label>
+                        </div>
                     </div>`;
                 return;
             }
@@ -901,7 +1161,7 @@
                             <input type="text" id="genNameInput" value="${escapeHtml(file.name)}" oninput="updatePath('genNsInput', 'genNameInput')" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
                         </div>
                     </div>
-                    <p class="text-gray-400 pt-2">이 파일 형식은 표준 JSON 구조로 자동 생성 및 관리됩니다. 우측 상단의 ZIP 내보내기 시 압축에 포함됩니다.</p>
+                    <p class="text-gray-400 pt-2">이 파일 형식은 표준 JSON 구조로 자동 생성 및 관리됩니다.</p>
                 </div>`;
         }
 
@@ -972,7 +1232,7 @@
             document.getElementById('btnConfirmCreateFile').addEventListener('click', confirmCreateFile);
             document.getElementById('modalNamespaceInput').addEventListener('input', updateModalPreviewPath);
             document.getElementById('modalFileNameInput').addEventListener('input', updateModalPreviewPath);
-            document.getElementById('modalTagTypeSelect').addEventListener('change', updateModalPreviewPath);
+            document.getElementById('modalTagTypeSelect').addEventListener('input', updateModalPreviewPath);
 
             document.querySelectorAll('.cat-group-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -988,7 +1248,7 @@
                 const v = getCurrentVersion();
                 state.files.forEach(f => f.rawText = serializeFileToText(f, v));
                 refreshAllUI();
-                showToast(`버전이 MC ${v.id}(으)로 변경되었습니다. (지원 기능 업데이트)`);
+                showToast(`버전이 MC ${v.id}(으)로 변경되었습니다.`);
             });
 
             document.getElementById('btnExportZip').addEventListener('click', async () => {
