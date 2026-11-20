@@ -393,6 +393,38 @@
                         flagSwimming: false,
                         flagBaby: false,
                         flagOnGround: false,
+                        flagInWater: false,
+                        flagOnFire: false,
+                        flagInPowderSnow: false,
+                        inputForward: false,
+                        inputBackward: false,
+                        inputLeft: false,
+                        inputRight: false,
+                        inputSneak: false,
+                        inputSprint: false,
+                        inputJump: false,
+                        equipHead: '',
+                        equipChest: '',
+                        equipLegs: '',
+                        equipFeet: '',
+                        equipMainhand: '',
+                        equipOffhand: '',
+                        nbtTags: '',
+                        nbtNoGravity: '',
+                        nbtInvulnerable: '',
+                        nbtSilent: '',
+                        nbtGlowing: '',
+                        nbtNoAI: '',
+                        nbtPersistenceRequired: '',
+                        nbtCustomNameVisible: '',
+                        nbtSelectedItemSlot: '',
+                        nbtHealth: '',
+                        entityNbt: '',
+                        entityScores: [
+                            { objective: 'score_name', min: 1, max: '' }
+                        ],
+                        tableBonusEnchantment: 'minecraft:fortune',
+                        tableBonusChances: '0.1, 0.2, 0.3',
                         looting_multiplier: 0.05,
                         enchantment: 'minecraft:looting',
                         chanceMin: 0,
@@ -411,6 +443,7 @@
                         damageSourceDirectEntityType: '',
                         damageSourceSourceEntityType: '',
                         damageSourceIsDirect: false,
+                        damageSourceIsProjectile: false,
                         refName: 'minecraft:example',
                         terms: [
                             { condition: 'minecraft:weather_check', raining: true, thundering: false }
@@ -673,7 +706,64 @@
                     if (d.flagSwimming) flags.is_swimming = true;
                     if (d.flagBaby) flags.is_baby = true;
                     if (d.flagOnGround) flags.on_ground = true;
+                    if (d.flagInWater) flags.is_in_water = true;
+                    if (d.flagOnFire) flags.is_on_fire = true;
+                    if (d.flagInPowderSnow) flags.is_in_powder_snow = true;
                     if (Object.keys(flags).length > 0) obj.predicate.flags = flags;
+                    const inputMap = {};
+                    if (d.inputForward) inputMap.forward = true;
+                    if (d.inputBackward) inputMap.backward = true;
+                    if (d.inputLeft) inputMap.left = true;
+                    if (d.inputRight) inputMap.right = true;
+                    if (d.inputSneak) inputMap.sneak = true;
+                    if (d.inputSprint) inputMap.sprint = true;
+                    if (d.inputJump) inputMap.jump = true;
+                    if (Object.keys(inputMap).length > 0) {
+                        obj.predicate.type_specific = {
+                            type: 'minecraft:player',
+                            input: inputMap
+                        };
+                    }
+                    const equipMap = {};
+                    const formatEquipItems = (raw) => {
+                        const arr = raw.split(',').map(s => s.trim()).filter(Boolean);
+                        if (versionObj.major >= 41) return { items: arr.length === 1 ? arr[0] : arr };
+                        return { item: arr[0] };
+                    };
+                    if (d.equipHead && d.equipHead.trim()) equipMap.head = formatEquipItems(d.equipHead);
+                    if (d.equipChest && d.equipChest.trim()) equipMap.chest = formatEquipItems(d.equipChest);
+                    if (d.equipLegs && d.equipLegs.trim()) equipMap.legs = formatEquipItems(d.equipLegs);
+                    if (d.equipFeet && d.equipFeet.trim()) equipMap.feet = formatEquipItems(d.equipFeet);
+                    if (d.equipMainhand && d.equipMainhand.trim()) equipMap.mainhand = formatEquipItems(d.equipMainhand);
+                    if (d.equipOffhand && d.equipOffhand.trim()) equipMap.offhand = formatEquipItems(d.equipOffhand);
+                    if (Object.keys(equipMap).length > 0) {
+                        obj.predicate.equipment = equipMap;
+                    }
+                    const nbtParts = [];
+                    if (d.nbtTags && d.nbtTags.trim()) {
+                        const tagTokens = d.nbtTags.split(',').map(s => s.trim()).filter(Boolean).map(s => `"${s.replace(/^"|"$/g, '')}"`);
+                        if (tagTokens.length > 0) nbtParts.push(`Tags:[${tagTokens.join(',')}]`);
+                    }
+                    if (d.nbtNoGravity === 'true' || d.nbtNoGravity === 'false') nbtParts.push(`NoGravity:${d.nbtNoGravity === 'true' ? '1b' : '0b'}`);
+                    if (d.nbtInvulnerable === 'true' || d.nbtInvulnerable === 'false') nbtParts.push(`Invulnerable:${d.nbtInvulnerable === 'true' ? '1b' : '0b'}`);
+                    if (d.nbtSilent === 'true' || d.nbtSilent === 'false') nbtParts.push(`Silent:${d.nbtSilent === 'true' ? '1b' : '0b'}`);
+                    if (d.nbtGlowing === 'true' || d.nbtGlowing === 'false') nbtParts.push(`Glowing:${d.nbtGlowing === 'true' ? '1b' : '0b'}`);
+                    if (d.nbtNoAI === 'true' || d.nbtNoAI === 'false') nbtParts.push(`NoAI:${d.nbtNoAI === 'true' ? '1b' : '0b'}`);
+                    if (d.nbtPersistenceRequired === 'true' || d.nbtPersistenceRequired === 'false') nbtParts.push(`PersistenceRequired:${d.nbtPersistenceRequired === 'true' ? '1b' : '0b'}`);
+                    if (d.nbtCustomNameVisible === 'true' || d.nbtCustomNameVisible === 'false') nbtParts.push(`CustomNameVisible:${d.nbtCustomNameVisible === 'true' ? '1b' : '0b'}`);
+                    if (d.nbtSelectedItemSlot !== '' && d.nbtSelectedItemSlot !== undefined && d.nbtSelectedItemSlot !== null) {
+                        nbtParts.push(`SelectedItemSlot:${Number(d.nbtSelectedItemSlot)}`);
+                    }
+                    if (d.nbtHealth !== '' && d.nbtHealth !== undefined && d.nbtHealth !== null) {
+                        nbtParts.push(`Health:${Number(d.nbtHealth)}f`);
+                    }
+                    if (d.entityNbt && d.entityNbt.trim()) {
+                        const rawCustom = d.entityNbt.trim().replace(/^\{|\}$/g, '').trim();
+                        if (rawCustom) nbtParts.push(rawCustom);
+                    }
+                    if (nbtParts.length > 0) {
+                        obj.predicate.nbt = `{${nbtParts.join(',')}}`;
+                    }
                     if (d.entityTypeFilter && d.entityTypeFilter.trim()) obj.predicate.type = d.entityTypeFilter.trim();
                 } else if (cond === 'minecraft:random_chance_with_looting' || cond === 'minecraft:random_chance_with_enchanted_bonus') {
                     obj.chance = Number(d.chance ?? 0.5);
@@ -726,6 +816,7 @@
                 } else if (cond === 'minecraft:damage_source_properties') {
                     const dmgPred = {};
                     if (d.damageSourceIsDirect) dmgPred.is_direct = true;
+                    if (d.damageSourceIsProjectile) dmgPred.is_projectile = true;
                     if (d.damageSourceDirectEntityType && d.damageSourceDirectEntityType.trim()) {
                         dmgPred.direct_entity = { type: d.damageSourceDirectEntityType.trim() };
                     }
@@ -735,12 +826,38 @@
                     obj.predicate = dmgPred;
                 } else if (cond === 'minecraft:entity_scores') {
                     obj.entity = d.entity || 'this';
-                    obj.scores = {};
+                    const scoresObj = {};
+                    const scoreRows = Array.isArray(d.entityScores) ? d.entityScores : [];
+                    scoreRows.forEach(row => {
+                        const name = (row.objective || '').trim();
+                        if (!name) return;
+                        const hasMin = row.min !== '' && row.min !== undefined && row.min !== null && !Number.isNaN(Number(row.min));
+                        const hasMax = row.max !== '' && row.max !== undefined && row.max !== null && !Number.isNaN(Number(row.max));
+                        if (hasMin && hasMax) {
+                            scoresObj[name] = { min: Number(row.min), max: Number(row.max) };
+                        } else if (hasMin) {
+                            scoresObj[name] = { min: Number(row.min) };
+                        } else if (hasMax) {
+                            scoresObj[name] = { max: Number(row.max) };
+                        } else {
+                            scoresObj[name] = { min: 1 };
+                        }
+                    });
+                    obj.scores = scoresObj;
+                } else if (cond === 'minecraft:killed_by_player') {
+                    // killed_by_player는 condition 필드만으로 구성됨
+                } else if (cond === 'minecraft:table_bonus') {
+                    obj.enchantment = d.tableBonusEnchantment || 'minecraft:fortune';
+                    const parsedChances = String(d.tableBonusChances || '0.1, 0.2, 0.3')
+                        .split(',')
+                        .map(s => Number(s.trim()))
+                        .filter(n => !Number.isNaN(n));
+                    obj.chances = parsedChances.length > 0 ? parsedChances : [0.1, 0.2, 0.3];
                 } else if (cond === 'minecraft:survives_explosion') {
                     // survives_explosion은 condition 필드만으로 구성됨
                 } else if (cond === 'minecraft:reference') {
                     obj.name = d.refName || 'minecraft:example';
-                } else if (cond === 'minecraft:all_of' || cond === 'minecraft:any_of') {
+                } else if (cond === 'minecraft:all_of' || cond === 'minecraft:any_of' || cond === 'minecraft:alternative') {
                     const rawTerms = Array.isArray(d.terms) ? d.terms : [];
                     obj.terms = rawTerms.map(buildSubPredicateObj);
                 } else if (cond === 'minecraft:inverted') {
@@ -1263,6 +1380,30 @@
             }
             file.data.term[key] = val;
             file.rawText = serializeFileToText(file, getCurrentVersion());
+        }
+
+        function addPredicateScoreRow() {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'predicate') return;
+            if (!Array.isArray(file.data.entityScores)) file.data.entityScores = [];
+            file.data.entityScores.push({ objective: `score_${file.data.entityScores.length + 1}`, min: 1, max: '' });
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderVisualBuilder();
+        }
+
+        function updatePredicateScoreRow(idx, key, val) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'predicate' || !Array.isArray(file.data.entityScores) || !file.data.entityScores[idx]) return;
+            file.data.entityScores[idx][key] = val;
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+        }
+
+        function removePredicateScoreRow(idx) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'predicate' || !Array.isArray(file.data.entityScores)) return;
+            file.data.entityScores.splice(idx, 1);
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            renderVisualBuilder();
         }
 
         function renderFeatureSummaryBox(categoryId, fallbackText) {
@@ -1880,16 +2021,20 @@
                             <select onchange="handleFieldInput('condition', this.value); renderVisualBuilder();" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono cursor-pointer">
                                 <option value="minecraft:weather_check" ${cond === 'minecraft:weather_check' ? 'selected' : ''}>minecraft:weather_check (날씨 검사)</option>
                                 <option value="minecraft:random_chance" ${cond === 'minecraft:random_chance' ? 'selected' : ''}>minecraft:random_chance (확률 검사)</option>
-                                <option value="minecraft:entity_properties" ${cond === 'minecraft:entity_properties' ? 'selected' : ''}>minecraft:entity_properties (엔티티 속성 / 웅크리기 감지)</option>
+                                <option value="minecraft:entity_properties" ${cond === 'minecraft:entity_properties' ? 'selected' : ''}>minecraft:entity_properties (엔티티 속성 / 행동 / 장비 감지)</option>
+                                <option value="minecraft:entity_scores" ${cond === 'minecraft:entity_scores' ? 'selected' : ''}>minecraft:entity_scores (스코어보드 점수 검사)</option>
                                 <option value="minecraft:random_chance_with_looting" ${cond === 'minecraft:random_chance_with_looting' ? 'selected' : ''}>minecraft:random_chance_with_looting (약탈/보너스 확률)</option>
+                                <option value="minecraft:table_bonus" ${cond === 'minecraft:table_bonus' ? 'selected' : ''}>minecraft:table_bonus (인챈트 레벨별 확률표)</option>
                                 <option value="minecraft:time_check" ${cond === 'minecraft:time_check' ? 'selected' : ''}>minecraft:time_check (게임 시간 검사)</option>
                                 <option value="minecraft:location_check" ${cond === 'minecraft:location_check' ? 'selected' : ''}>minecraft:location_check (위치/바이옴/차원/구조물/블록 검사)</option>
                                 <option value="minecraft:block_state_property" ${cond === 'minecraft:block_state_property' ? 'selected' : ''}>minecraft:block_state_property (블록 상태 속성 검사)</option>
                                 <option value="minecraft:match_tool" ${cond === 'minecraft:match_tool' ? 'selected' : ''}>minecraft:match_tool (도구/아이템 검사)</option>
-                                <option value="minecraft:damage_source_properties" ${cond === 'minecraft:damage_source_properties' ? 'selected' : ''}>minecraft:damage_source_properties (피해 원인 속성 검사)</option>
+                                <option value="minecraft:killed_by_player" ${cond === 'minecraft:killed_by_player' ? 'selected' : ''}>minecraft:killed_by_player (플레이어 처치 여부)</option>
+                                <option value="minecraft:damage_source_properties" ${cond === 'minecraft:damage_source_properties' ? 'selected' : ''}>minecraft:damage_source_properties (피해 원인 / 투사체 속성 검사)</option>
                                 <option value="minecraft:survives_explosion" ${cond === 'minecraft:survives_explosion' ? 'selected' : ''}>minecraft:survives_explosion (폭발 생존 확률)</option>
                                 <option value="minecraft:all_of" ${cond === 'minecraft:all_of' ? 'selected' : ''}>minecraft:all_of (AND 복합 조건)</option>
                                 <option value="minecraft:any_of" ${cond === 'minecraft:any_of' ? 'selected' : ''}>minecraft:any_of (OR 복합 조건)</option>
+                                <option value="minecraft:alternative" ${cond === 'minecraft:alternative' ? 'selected' : ''}>minecraft:alternative (OR 대체 조건 목록)</option>
                                 <option value="minecraft:inverted" ${cond === 'minecraft:inverted' ? 'selected' : ''}>minecraft:inverted (NOT 반전 조건)</option>
                                 <option value="minecraft:reference" ${cond === 'minecraft:reference' ? 'selected' : ''}>minecraft:reference (다른 프리디케이트 참조)</option>
                             </select>
@@ -1941,6 +2086,162 @@
                                         <input type="checkbox" ${d.flagOnGround ? 'checked' : ''} onchange="handleFieldInput('flagOnGround', this.checked)">
                                         <span>지면 위 (on_ground)</span>
                                     </label>
+                                    <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                        <input type="checkbox" ${d.flagInWater ? 'checked' : ''} onchange="handleFieldInput('flagInWater', this.checked)">
+                                        <span>물 속 (is_in_water)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                        <input type="checkbox" ${d.flagOnFire ? 'checked' : ''} onchange="handleFieldInput('flagOnFire', this.checked)">
+                                        <span>불 타는 중 (is_on_fire)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                        <input type="checkbox" ${d.flagInPowderSnow ? 'checked' : ''} onchange="handleFieldInput('flagInPowderSnow', this.checked)">
+                                        <span>가루 눈 속 (is_in_powder_snow)</span>
+                                    </label>
+                                </div>
+                                <div class="pt-2 border-t border-mc-border/60 space-y-2">
+                                    <label class="block font-semibold text-emerald-300">플레이어 키 입력 감지 (type_specific.input)</label>
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.inputForward ? 'checked' : ''} onchange="handleFieldInput('inputForward', this.checked)">
+                                            <span>앞으로 (forward)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.inputBackward ? 'checked' : ''} onchange="handleFieldInput('inputBackward', this.checked)">
+                                            <span>뒤로 (backward)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.inputLeft ? 'checked' : ''} onchange="handleFieldInput('inputLeft', this.checked)">
+                                            <span>왼쪽 (left)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.inputRight ? 'checked' : ''} onchange="handleFieldInput('inputRight', this.checked)">
+                                            <span>오른쪽 (right)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.inputSneak ? 'checked' : ''} onchange="handleFieldInput('inputSneak', this.checked)">
+                                            <span>웅크리기 (sneak)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.inputSprint ? 'checked' : ''} onchange="handleFieldInput('inputSprint', this.checked)">
+                                            <span>달리기 (sprint)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                            <input type="checkbox" ${d.inputJump ? 'checked' : ''} onchange="handleFieldInput('inputJump', this.checked)">
+                                            <span>점프 (jump)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="pt-2 border-t border-mc-border/60 space-y-2">
+                                    <label class="block font-semibold text-emerald-300">장비 슬롯 착용 아이템 감지 (equipment)</label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono">
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">머리 (head)</span>
+                                            <input type="text" value="${escapeHtml(d.equipHead || '')}" oninput="handleFieldInput('equipHead', this.value)" placeholder="minecraft:diamond_helmet" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">가슴 (chest)</span>
+                                            <input type="text" value="${escapeHtml(d.equipChest || '')}" oninput="handleFieldInput('equipChest', this.value)" placeholder="minecraft:diamond_chestplate" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">다리 (legs)</span>
+                                            <input type="text" value="${escapeHtml(d.equipLegs || '')}" oninput="handleFieldInput('equipLegs', this.value)" placeholder="minecraft:diamond_leggings" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">발 (feet)</span>
+                                            <input type="text" value="${escapeHtml(d.equipFeet || '')}" oninput="handleFieldInput('equipFeet', this.value)" placeholder="minecraft:diamond_boots" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">주로 쓰는 손 (mainhand)</span>
+                                            <input type="text" value="${escapeHtml(d.equipMainhand || '')}" oninput="handleFieldInput('equipMainhand', this.value)" placeholder="minecraft:diamond_sword" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">다른 손 (offhand)</span>
+                                            <input type="text" value="${escapeHtml(d.equipOffhand || '')}" oninput="handleFieldInput('equipOffhand', this.value)" placeholder="minecraft:shield" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="pt-2 border-t border-mc-border/60 space-y-2">
+                                    <label class="block font-semibold text-emerald-300">엔티티 NBT 감지 (nbt)</label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono">
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">스코어보드 태그 (Tags, 쉼표 구분)</span>
+                                            <input type="text" value="${escapeHtml(d.nbtTags || '')}" oninput="handleFieldInput('nbtTags', this.value)" placeholder="boss, custom_mob" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">선택 핫바 슬롯 (SelectedItemSlot)</span>
+                                            <select onchange="handleFieldInput('nbtSelectedItemSlot', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${(d.nbtSelectedItemSlot ?? '') === '' ? 'selected' : ''}>검사 안 함</option>
+                                                ${Array.from({length: 9}).map((_, sIdx) => `
+                                                    <option value="${sIdx}" ${String(d.nbtSelectedItemSlot) === String(sIdx) ? 'selected' : ''}>슬롯 ${sIdx} (${sIdx + 1}번 칸)</option>
+                                                `).join('')}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">무중력 상태 (NoGravity)</span>
+                                            <select onchange="handleFieldInput('nbtNoGravity', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${!d.nbtNoGravity ? 'selected' : ''}>검사 안 함</option>
+                                                <option value="true" ${d.nbtNoGravity === 'true' ? 'selected' : ''}>1b (무중력 활성)</option>
+                                                <option value="false" ${d.nbtNoGravity === 'false' ? 'selected' : ''}>0b (중력 적용)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">무적 상태 (Invulnerable)</span>
+                                            <select onchange="handleFieldInput('nbtInvulnerable', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${!d.nbtInvulnerable ? 'selected' : ''}>검사 안 함</option>
+                                                <option value="true" ${d.nbtInvulnerable === 'true' ? 'selected' : ''}>1b (무적 활성)</option>
+                                                <option value="false" ${d.nbtInvulnerable === 'false' ? 'selected' : ''}>0b (무적 비활성)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">발광 외곽선 (Glowing)</span>
+                                            <select onchange="handleFieldInput('nbtGlowing', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${!d.nbtGlowing ? 'selected' : ''}>검사 안 함</option>
+                                                <option value="true" ${d.nbtGlowing === 'true' ? 'selected' : ''}>1b (발광 중)</option>
+                                                <option value="false" ${d.nbtGlowing === 'false' ? 'selected' : ''}>0b (발광 꺼짐)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">무음 상태 (Silent)</span>
+                                            <select onchange="handleFieldInput('nbtSilent', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${!d.nbtSilent ? 'selected' : ''}>검사 안 함</option>
+                                                <option value="true" ${d.nbtSilent === 'true' ? 'selected' : ''}>1b (소리 없음)</option>
+                                                <option value="false" ${d.nbtSilent === 'false' ? 'selected' : ''}>0b (소리 출력)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">AI 비활성화 (NoAI)</span>
+                                            <select onchange="handleFieldInput('nbtNoAI', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${!d.nbtNoAI ? 'selected' : ''}>검사 안 함</option>
+                                                <option value="true" ${d.nbtNoAI === 'true' ? 'selected' : ''}>1b (AI 정지)</option>
+                                                <option value="false" ${d.nbtNoAI === 'false' ? 'selected' : ''}>0b (AI 활성)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">이름표 항상 표시 (CustomNameVisible)</span>
+                                            <select onchange="handleFieldInput('nbtCustomNameVisible', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${!d.nbtCustomNameVisible ? 'selected' : ''}>검사 안 함</option>
+                                                <option value="true" ${d.nbtCustomNameVisible === 'true' ? 'selected' : ''}>1b (항상 표시)</option>
+                                                <option value="false" ${d.nbtCustomNameVisible === 'false' ? 'selected' : ''}>0b (기본)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">자연 디스폰 방지 (PersistenceRequired)</span>
+                                            <select onchange="handleFieldInput('nbtPersistenceRequired', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white cursor-pointer">
+                                                <option value="" ${!d.nbtPersistenceRequired ? 'selected' : ''}>검사 안 함</option>
+                                                <option value="true" ${d.nbtPersistenceRequired === 'true' ? 'selected' : ''}>1b (디스폰 방지)</option>
+                                                <option value="false" ${d.nbtPersistenceRequired === 'false' ? 'selected' : ''}>0b (기본)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <span class="text-[10px] text-gray-400">정확한 체력 수치 (Health)</span>
+                                            <input type="number" step="0.5" value="${d.nbtHealth ?? ''}" oninput="handleFieldInput('nbtHealth', this.value)" placeholder="예: 20" class="w-full bg-mc-card border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-gray-400">추가 커스텀 NBT 직접 입력 (선택 사항)</span>
+                                        <input type="text" value="${escapeHtml(d.entityNbt || '')}" oninput="handleFieldInput('entityNbt', this.value)" placeholder='Fire:100s, HandItems:[{id:"minecraft:stick",Count:1b}]' class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 font-mono text-emerald-300">
+                                    </div>
                                 </div>
                             </div>
                         ` : ''}
@@ -2042,10 +2343,61 @@
                                         <input type="text" value="${escapeHtml(d.damageSourceSourceEntityType || '')}" oninput="handleFieldInput('damageSourceSourceEntityType', this.value)" placeholder="minecraft:skeleton" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
                                     </div>
                                 </div>
-                                <label class="flex items-center gap-2 text-gray-200 cursor-pointer font-sans">
-                                    <input type="checkbox" ${d.damageSourceIsDirect ? 'checked' : ''} onchange="handleFieldInput('damageSourceIsDirect', this.checked)">
-                                    <span>직접 피해만 허용 (is_direct: true)</span>
-                                </label>
+                                <div class="flex flex-wrap gap-4 font-sans">
+                                    <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                        <input type="checkbox" ${d.damageSourceIsDirect ? 'checked' : ''} onchange="handleFieldInput('damageSourceIsDirect', this.checked)">
+                                        <span>직접 피해만 허용 (is_direct: true)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                        <input type="checkbox" ${d.damageSourceIsProjectile ? 'checked' : ''} onchange="handleFieldInput('damageSourceIsProjectile', this.checked)">
+                                        <span>투사체 피해 (is_projectile: true)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${cond === 'minecraft:entity_scores' ? `
+                            <div class="space-y-3 pt-2 border-t border-mc-border">
+                                <div>
+                                    <label class="block font-semibold text-gray-300 mb-1">대상 엔티티 (entity)</label>
+                                    <select onchange="handleFieldInput('entity', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono cursor-pointer">
+                                        <option value="this" ${(d.entity || 'this') === 'this' ? 'selected' : ''}>this (대상 자신)</option>
+                                        <option value="killer" ${d.entity === 'killer' ? 'selected' : ''}>killer (킬러)</option>
+                                        <option value="direct_killer" ${d.entity === 'direct_killer' ? 'selected' : ''}>direct_killer (직접 공격자)</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <label class="font-semibold text-gray-200">스코어보드 조건 목록 (scores)</label>
+                                    <button type="button" onclick="addPredicateScoreRow()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer">+ 스코어 추가</button>
+                                </div>
+                                <div class="space-y-2 font-mono">
+                                    ${(Array.isArray(d.entityScores) ? d.entityScores : []).map((row, idx) => `
+                                        <div class="grid grid-cols-1 sm:grid-cols-7 gap-2 bg-mc-card p-2 rounded-xl border border-mc-border items-center">
+                                            <input type="text" value="${escapeHtml(row.objective || '')}" oninput="updatePredicateScoreRow(${idx}, 'objective', this.value)" placeholder="스코어 이름" class="sm:col-span-3 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-emerald-300">
+                                            <input type="number" value="${row.min ?? ''}" oninput="updatePredicateScoreRow(${idx}, 'min', this.value === '' ? '' : Number(this.value))" placeholder="최소(min)" class="sm:col-span-2 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                            <div class="sm:col-span-2 flex items-center gap-1.5">
+                                                <input type="number" value="${row.max ?? ''}" oninput="updatePredicateScoreRow(${idx}, 'max', this.value === '' ? '' : Number(this.value))" placeholder="최대(max)" class="w-full bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                                <button type="button" onclick="removePredicateScoreRow(${idx})" class="px-2 py-1.5 rounded-lg bg-rose-950 text-rose-300 font-bold cursor-pointer shrink-0">✕</button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${cond === 'minecraft:killed_by_player' ? `
+                            <div class="pt-2 border-t border-mc-border text-gray-400">
+                                플레이어에 의해 처치되었을 때 참이 되는 조건입니다.
+                            </div>
+                        ` : ''}
+                        ${cond === 'minecraft:table_bonus' ? `
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-mc-border font-mono">
+                                <div>
+                                    <label class="block font-semibold text-gray-300 mb-1">인챈트 ID (enchantment)</label>
+                                    <input type="text" value="${escapeHtml(d.tableBonusEnchantment || 'minecraft:fortune')}" oninput="handleFieldInput('tableBonusEnchantment', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-gray-300 mb-1">레벨별 확률 목록 (chances, 쉼표 구분)</label>
+                                    <input type="text" value="${escapeHtml(d.tableBonusChances || '0.1, 0.2, 0.3')}" oninput="handleFieldInput('tableBonusChances', this.value)" placeholder="0.1, 0.2, 0.3" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                                </div>
                             </div>
                         ` : ''}
                         ${cond === 'minecraft:survives_explosion' ? `
@@ -2059,7 +2411,7 @@
                                 <input type="text" value="${escapeHtml(d.refName || 'minecraft:example')}" oninput="handleFieldInput('refName', this.value)" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300 font-mono">
                             </div>
                         ` : ''}
-                        ${cond === 'minecraft:all_of' || cond === 'minecraft:any_of' ? `
+                        ${cond === 'minecraft:all_of' || cond === 'minecraft:any_of' || cond === 'minecraft:alternative' ? `
                             <div class="space-y-2 pt-2 border-t border-mc-border">
                                 <div class="flex items-center justify-between">
                                     <label class="font-semibold text-gray-200">하위 조건 목록 (terms)</label>
