@@ -326,6 +326,10 @@
             const cat = FEATURE_CATEGORIES.find(c => c.id === file.categoryId);
             if (!cat) return `data/${file.namespace}/${file.name}.json`;
             let folder = cat.getFolder(versionObj);
+            if (file.categoryId === 'tags' && file.subTagType) {
+                const sub = versionObj.major >= 48 ? file.subTagType : (file.subTagType === 'entity_type' ? 'entity_types' : `${file.subTagType}s`);
+                folder = `tags/${sub}`;
+            }
             return `data/${file.namespace}/${folder}/${file.name}${cat.ext}`;
         }
 
@@ -375,9 +379,50 @@
                     return { condition: 'minecraft:weather_check', raining: true, thundering: false, chance: 0.5 };
                 case 'item_modifier':
                     return { function: 'minecraft:set_name', name: { text: '수정된 아이템' } };
+                case 'dialog':
+                    return {
+                        dialogType: 'minecraft:notice',
+                        title: '안내 메시지',
+                        externalTitle: '',
+                        canCloseWithEscape: true,
+                        pause: true,
+                        afterAction: 'close',
+                        bodyElements: [
+                            { type: 'minecraft:plain_message', contents: '환영합니다! 데이터팩 UI 다이얼로그입니다.', width: 200 }
+                        ],
+                        inputs: [],
+                        actionLabel: '확인',
+                        actionType: 'none',
+                        actionValue: '',
+                        yesLabel: '예',
+                        yesActionType: 'run_command',
+                        yesActionValue: 'say 예 선택됨',
+                        noLabel: '아니오',
+                        noActionType: 'none',
+                        noActionValue: '',
+                        columns: 2,
+                        multiActions: [
+                            { label: '옵션 1', actionType: 'run_command', actionValue: 'say 옵션 1 실행' }
+                        ],
+                        dialogsList: ['minecraft:server_links'],
+                        exitLabel: '닫기',
+                        exitActionType: 'none',
+                        exitActionValue: ''
+                    };
                 default:
                     return {};
             }
+        }
+
+        function buildDialogActionObj(type, val) {
+            if (!type || type === 'none') return undefined;
+            if (type === 'run_command') return { type: 'minecraft:run_command', command: val || '' };
+            if (type === 'suggest_command') return { type: 'minecraft:suggest_command', command: val || '' };
+            if (type === 'open_url') return { type: 'minecraft:open_url', url: val || 'https://minecraft.net' };
+            if (type === 'copy_to_clipboard') return { type: 'minecraft:copy_to_clipboard', value: val || '' };
+            if (type === 'show_dialog') return { type: 'minecraft:show_dialog', dialog: val || 'minecraft:server_links' };
+            if (type === 'dynamic/run_command') return { type: 'minecraft:dynamic/run_command', template: val || '' };
+            return undefined;
         }
 
         function serializeFileToText(file, versionObj) {
@@ -487,6 +532,113 @@
                     if (d.chance !== undefined) obj.chance = Number(d.chance);
                     if (d.raining !== undefined) obj.raining = Boolean(d.raining);
                     if (d.thundering !== undefined) obj.thundering = Boolean(d.thundering);
+                }
+            } else if (file.categoryId === 'dialog') {
+                const dtype = d.dialogType || 'minecraft:notice';
+                obj = {
+                    type: dtype,
+                    title: { text: d.title || '다이얼로그' },
+                    can_close_with_escape: d.canCloseWithEscape !== false,
+                    pause: d.pause !== false
+                };
+                if (d.externalTitle && d.externalTitle.trim()) {
+                    obj.external_title = { text: d.externalTitle.trim() };
+                }
+                if (d.afterAction && d.afterAction !== 'close') {
+                    obj.after_action = d.afterAction;
+                }
+                if (Array.isArray(d.bodyElements) && d.bodyElements.length > 0) {
+                    obj.body = d.bodyElements.map(b => {
+                        if (b.type === 'minecraft:item') {
+                            return {
+                                type: 'minecraft:item',
+                                item: { id: b.itemId || 'minecraft:diamond', count: Number(b.count) || 1 },
+                                description: b.contents ? { text: b.contents } : undefined,
+                                show_decorations: b.showDecorations !== false,
+                                show_tooltip: b.showTooltip !== false
+                            };
+                        }
+                        return {
+                            type: 'minecraft:plain_message',
+                            contents: { text: b.contents || '' },
+                            width: Number(b.width) || 200
+                        };
+                    });
+                }
+                if (Array.isArray(d.inputs) && d.inputs.length > 0) {
+                    obj.inputs = d.inputs.map(inp => {
+                        const base = {
+                            type: inp.type || 'minecraft:text',
+                            key: inp.key || 'input_key',
+                            label: { text: inp.label || '입력' }
+                        };
+                        if (inp.type === 'minecraft:text') {
+                            base.width = Number(inp.width) || 200;
+                            if (inp.initial) base.initial = inp.initial;
+                            if (inp.maxLength) base.max_length = Number(inp.maxLength);
+                        } else if (inp.type === 'minecraft:boolean') {
+                            base.initial = Boolean(inp.initialBool);
+                            if (inp.onTrue) base.on_true = inp.onTrue;
+                            if (inp.onFalse) base.on_false = inp.onFalse;
+                        } else if (inp.type === 'minecraft:number_range') {
+                            base.start = Number(inp.start ?? 0);
+                            base.end = Number(inp.end ?? 100);
+                            if (inp.step) base.step = Number(inp.step);
+                            if (inp.initialNum !== undefined && inp.initialNum !== '') base.initial = Number(inp.initialNum);
+                        } else if (inp.type === 'minecraft:single_option') {
+                            const opts = (inp.optionsRaw || 'opt1:옵션 1,opt2:옵션 2').split(',').map(s => {
+                                const [oid, odisp] = s.split(':');
+                                return { id: (oid || '').trim(), display: { text: (odisp || oid || '').trim() } };
+                            }).filter(o => o.id);
+                            base.options = opts.length ? opts : [{ id: 'default', display: { text: '기본' } }];
+                        }
+                        return base;
+                    });
+                }
+
+                if (dtype === 'minecraft:notice') {
+                    const act = buildDialogActionObj(d.actionType, d.actionValue);
+                    obj.action = {
+                        label: { text: d.actionLabel || '확인' },
+                        ...(act ? { action: act } : {})
+                    };
+                } else if (dtype === 'minecraft:confirmation') {
+                    const yesAct = buildDialogActionObj(d.yesActionType, d.yesActionValue);
+                    const noAct = buildDialogActionObj(d.noActionType, d.noActionValue);
+                    obj.yes = {
+                        label: { text: d.yesLabel || '예' },
+                        ...(yesAct ? { action: yesAct } : {})
+                    };
+                    obj.no = {
+                        label: { text: d.noLabel || '아니오' },
+                        ...(noAct ? { action: noAct } : {})
+                    };
+                } else if (dtype === 'minecraft:multi_action') {
+                    obj.columns = Number(d.columns) || 2;
+                    obj.actions = (d.multiActions || []).map(ma => {
+                        const act = buildDialogActionObj(ma.actionType, ma.actionValue);
+                        return {
+                            label: { text: ma.label || '버튼' },
+                            ...(act ? { action: act } : {})
+                        };
+                    });
+                    if (d.exitLabel && d.exitLabel.trim()) {
+                        const exitAct = buildDialogActionObj(d.exitActionType, d.exitActionValue);
+                        obj.exit_action = {
+                            label: { text: d.exitLabel.trim() },
+                            ...(exitAct ? { action: exitAct } : {})
+                        };
+                    }
+                } else if (dtype === 'minecraft:dialog_list') {
+                    obj.dialogs = Array.isArray(d.dialogsList) ? d.dialogsList.filter(Boolean) : [];
+                    obj.columns = Number(d.columns) || 2;
+                    if (d.exitLabel && d.exitLabel.trim()) {
+                        const exitAct = buildDialogActionObj(d.exitActionType, d.exitActionValue);
+                        obj.exit_action = {
+                            label: { text: d.exitLabel.trim() },
+                            ...(exitAct ? { action: exitAct } : {})
+                        };
+                    }
                 }
             } else {
                 obj = d;
@@ -630,14 +782,13 @@
         function updateModalPreviewPath() {
             if (!pendingCategoryId) return;
             const v = getCurrentVersion();
-            const cat = FEATURE_CATEGORIES.find(c => c.id === pendingCategoryId);
             const ns = document.getElementById('modalNamespaceInput').value.trim() || 'custom_pack';
             const name = document.getElementById('modalFileNameInput').value.trim() || 'example';
             const subTag = document.getElementById('modalTagTypeSelect').value;
 
             const mockFile = {
                 id: 'preview',
-                categoryId: cat.isSystemTag ? pendingCategoryId : pendingCategoryId,
+                categoryId: pendingCategoryId,
                 namespace: ns,
                 name: name,
                 subTagType: subTag
@@ -648,7 +799,6 @@
         function confirmCreateFile() {
             if (!pendingCategoryId) return;
             const v = getCurrentVersion();
-            const cat = FEATURE_CATEGORIES.find(c => c.id === pendingCategoryId);
             const ns = document.getElementById('modalNamespaceInput').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'custom_pack';
             const name = document.getElementById('modalFileNameInput').value.trim().toLowerCase().replace(/[^a-z0-9_/-]/g, '') || 'example';
             const subTag = document.getElementById('modalTagTypeSelect').value;
@@ -749,6 +899,7 @@
 
             document.getElementById('editorFilePath').textContent = resolveFilePath(file, v);
             document.getElementById('editorTitle').textContent = file.id === 'pack.mcmeta' ? '팩 메타데이터 설정' : file.name;
+            document.getElementById('editorCategoryBadge').textContent = file.id === 'pack.mcmeta' ? 'PACK.MCMETA' : file.categoryId.toUpperCase();
             document.getElementById('btnDeleteCurrentFile').classList.toggle('hidden', file.id === 'pack.mcmeta');
 
             if (file.id === 'pack.mcmeta') {
@@ -766,7 +917,7 @@
                 return;
             }
 
-            // Load / Tick / Tags UI (기존 UI 레이아웃 유지)
+            // Load / Tick / Tags UI
             if (file.categoryId === 'load_tag' || file.categoryId === 'tick_tag' || file.categoryId === 'tags') {
                 const d = file.data;
                 if (!Array.isArray(d.values)) d.values = [];
@@ -825,6 +976,9 @@
                 }
                 container.innerHTML = `
                     <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-4 text-xs">
+                        <div class="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-[11px] leading-relaxed">
+                            📂 <strong>저장 경로 안내:</strong> <code class="font-mono text-emerald-300">${escapeHtml(resolveFilePath(file, v))}</code> (바닐라 레시피 덮어쓰기는 네임스페이스를 <strong>minecraft</strong>로 설정)
+                        </div>
                         <div>
                             <label class="block font-semibold text-gray-300 mb-1">경로 설정</label>
                             <div class="flex gap-2 font-mono">
@@ -847,7 +1001,7 @@
                             <div class="md:col-span-7 space-y-2">
                                 <label class="block font-semibold text-gray-300">재료 아이템 ID 입력</label>
                                 <div class="grid grid-cols-3 gap-1.5 font-mono">
-                                    ${Array.from({length: d.recipeType === 'minecraft:crafting_shapeless' ? 9 : 9}).map((_, idx) => `
+                                    ${Array.from({length: 9}).map((_, idx) => `
                                         <div class="flex flex-col">
                                             <span class="text-[9px] text-gray-400 mb-0.5">슬롯 ${idx+1}</span>
                                             <input type="text" value="${escapeHtml(d.gridItems[idx] || '')}" oninput="updateRecipeGridInput(${idx}, this.value)" placeholder="minecraft:..." class="bg-mc-card border border-mc-border rounded-lg px-2 py-1.5 text-emerald-300 text-[11px] focus:outline-none focus:border-emerald-500">
@@ -1151,6 +1305,274 @@
                 return;
             }
 
+            if (file.categoryId === 'dialog') {
+                const d = file.data;
+                const dtype = d.dialogType || 'minecraft:notice';
+                const bodyElements = Array.isArray(d.bodyElements) ? d.bodyElements : [];
+                const inputs = Array.isArray(d.inputs) ? d.inputs : [];
+                const multiActions = Array.isArray(d.multiActions) ? d.multiActions : [];
+                const dialogsList = Array.isArray(d.dialogsList) ? d.dialogsList : [];
+
+                const renderActionSelector = (prefix, typeVal, valueVal) => `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1.5">
+                        <select onchange="handleFieldInput('${prefix}Type', this.value); renderVisualBuilder();" class="bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-xs text-white font-mono cursor-pointer">
+                            <option value="none" ${typeVal === 'none' ? 'selected' : ''}>동작 없음 (창 닫기)</option>
+                            <option value="run_command" ${typeVal === 'run_command' ? 'selected' : ''}>run_command (명령어 실행)</option>
+                            <option value="dynamic/run_command" ${typeVal === 'dynamic/run_command' ? 'selected' : ''}>dynamic/run_command (입력값 치환 실행)</option>
+                            <option value="suggest_command" ${typeVal === 'suggest_command' ? 'selected' : ''}>suggest_command (채팅창 제안)</option>
+                            <option value="open_url" ${typeVal === 'open_url' ? 'selected' : ''}>open_url (웹 링크 열기)</option>
+                            <option value="copy_to_clipboard" ${typeVal === 'copy_to_clipboard' ? 'selected' : ''}>copy_to_clipboard (클립보드 복사)</option>
+                            <option value="show_dialog" ${typeVal === 'show_dialog' ? 'selected' : ''}>show_dialog (다른 다이얼로그 열기)</option>
+                        </select>
+                        ${typeVal && typeVal !== 'none' ? `
+                            <input type="text" value="${escapeHtml(valueVal || '')}" oninput="handleFieldInput('${prefix}Value', this.value); syncDialogPreview();" placeholder="${typeVal === 'open_url' ? 'https://...' : typeVal === 'show_dialog' ? 'namespace:dialog_id' : 'say 안녕 $(input_key)'}" class="bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-emerald-300">
+                        ` : '<div class="text-[11px] text-gray-500 self-center px-2">추가 파라미터 없음</div>'}
+                    </div>
+                `;
+
+                container.innerHTML = `
+                    <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-4 text-xs">
+                        <div class="p-3 rounded-xl bg-blue-950/40 border border-blue-500/40 text-blue-200 text-[11px] flex flex-wrap items-center justify-between gap-2">
+                            <span>💬 인게임 호출 명령어: <code class="font-mono text-emerald-300 bg-mc-bg px-1.5 py-0.5 rounded">/dialog show @s ${escapeHtml(file.namespace)}:${escapeHtml(file.name)}</code></span>
+                            <span class="text-blue-300/80">MC 1.21.6+ 지원</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">경로 설정 (Namespace : ID)</label>
+                                <div class="flex gap-2 font-mono">
+                                    <input type="text" id="dialogNsInput" value="${escapeHtml(file.namespace)}" oninput="updatePath('dialogNsInput', 'dialogNameInput'); syncDialogPreview();" class="w-1/3 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-emerald-300">
+                                    <span class="self-center text-gray-400">:</span>
+                                    <input type="text" id="dialogNameInput" value="${escapeHtml(file.name)}" oninput="updatePath('dialogNsInput', 'dialogNameInput'); syncDialogPreview();" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">다이얼로그 유형 (type)</label>
+                                <select onchange="handleFieldInput('dialogType', this.value); renderVisualBuilder();" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white font-mono cursor-pointer">
+                                    <option value="minecraft:notice" ${dtype === 'minecraft:notice' ? 'selected' : ''}>minecraft:notice (단일 확인 공지)</option>
+                                    <option value="minecraft:confirmation" ${dtype === 'minecraft:confirmation' ? 'selected' : ''}>minecraft:confirmation (예 / 아니오 선택)</option>
+                                    <option value="minecraft:multi_action" ${dtype === 'minecraft:multi_action' ? 'selected' : ''}>minecraft:multi_action (다중 액션 버튼)</option>
+                                    <option value="minecraft:dialog_list" ${dtype === 'minecraft:dialog_list' ? 'selected' : ''}>minecraft:dialog_list (다이얼로그 목록)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">창 제목 (title)</label>
+                                <input type="text" value="${escapeHtml(d.title || '')}" oninput="handleFieldInput('title', this.value); syncDialogPreview();" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-300 mb-1">외부 목록 표시 제목 (external_title, 선택)</label>
+                                <input type="text" value="${escapeHtml(d.externalTitle || '')}" oninput="handleFieldInput('externalTitle', this.value); syncDialogPreview();" placeholder="목록 버튼에 보일 짧은 이름" class="w-full bg-mc-card border border-mc-border rounded-lg px-3 py-2 text-white">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-4 pt-1">
+                            <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                <input type="checkbox" ${d.canCloseWithEscape !== false ? 'checked' : ''} onchange="handleFieldInput('canCloseWithEscape', this.checked); syncDialogPreview();">
+                                <span>ESC 키로 닫기 허용 (can_close_with_escape)</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-gray-200 cursor-pointer">
+                                <input type="checkbox" ${d.pause !== false ? 'checked' : ''} onchange="handleFieldInput('pause', this.checked); syncDialogPreview();">
+                                <span>싱글플레이 일시정지 (pause)</span>
+                            </label>
+                            <div class="flex items-center gap-2 ml-auto">
+                                <span class="text-gray-400">클릭 후 동작:</span>
+                                <select onchange="handleFieldInput('afterAction', this.value); syncDialogPreview();" class="bg-mc-card border border-mc-border rounded-lg px-2 py-1 text-white font-mono text-[11px]">
+                                    <option value="close" ${(d.afterAction || 'close') === 'close' ? 'selected' : ''}>close (닫기)</option>
+                                    <option value="none" ${d.afterAction === 'none' ? 'selected' : ''}>none (유지)</option>
+                                    <option value="wait_for_response" ${d.afterAction === 'wait_for_response' ? 'selected' : ''}>wait_for_response (응답 대기)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 본문 영역 (body) -->
+                        <div class="space-y-2 pt-3 border-t border-mc-border">
+                            <div class="flex items-center justify-between">
+                                <label class="font-semibold text-gray-200">본문 요소 (body)</label>
+                                <div class="flex gap-1.5">
+                                    <button type="button" onclick="addDialogBody('minecraft:plain_message')" class="px-2.5 py-1 rounded-lg bg-mc-card hover:bg-gray-800 text-emerald-300 border border-mc-border font-semibold text-[11px] cursor-pointer">+ 텍스트 추가</button>
+                                    <button type="button" onclick="addDialogBody('minecraft:item')" class="px-2.5 py-1 rounded-lg bg-mc-card hover:bg-gray-800 text-blue-300 border border-mc-border font-semibold text-[11px] cursor-pointer">+ 아이템 표시 추가</button>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                ${bodyElements.length === 0 ? '<p class="text-gray-500 italic text-[11px]">등록된 본문이 없습니다.</p>' : ''}
+                                ${bodyElements.map((b, idx) => `
+                                    <div class="bg-mc-card p-2.5 rounded-xl border border-mc-border space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[11px] font-mono font-bold ${b.type === 'minecraft:item' ? 'text-blue-300' : 'text-emerald-300'}">${b.type}</span>
+                                            <button type="button" onclick="removeDialogBody(${idx})" class="text-rose-400 hover:text-rose-300 text-xs font-bold cursor-pointer">✕</button>
+                                        </div>
+                                        ${b.type === 'minecraft:item' ? `
+                                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                <input type="text" value="${escapeHtml(b.itemId || 'minecraft:diamond')}" oninput="updateDialogBody(${idx}, 'itemId', this.value)" placeholder="minecraft:diamond" class="bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 font-mono text-emerald-300">
+                                                <input type="number" min="1" value="${b.count || 1}" oninput="updateDialogBody(${idx}, 'count', Number(this.value))" placeholder="개수" class="bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 font-mono text-white">
+                                                <input type="text" value="${escapeHtml(b.contents || '')}" oninput="updateDialogBody(${idx}, 'contents', this.value)" placeholder="아이템 옆 설명 텍스트" class="bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                            </div>
+                                        ` : `
+                                            <div class="flex gap-2">
+                                                <input type="text" value="${escapeHtml(b.contents || '')}" oninput="updateDialogBody(${idx}, 'contents', this.value)" placeholder="표시할 문구 입력" class="flex-1 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                                <input type="number" min="50" max="1024" value="${b.width || 200}" oninput="updateDialogBody(${idx}, 'width', Number(this.value))" title="너비(width)" class="w-20 bg-mc-bg border border-mc-border rounded-lg px-2 py-1.5 font-mono text-gray-300 text-center">
+                                            </div>
+                                        `}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 입력 컨트롤 영역 (inputs) -->
+                        <div class="space-y-2 pt-3 border-t border-mc-border">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <label class="font-semibold text-gray-200">사용자 입력 위젯 (inputs)</label>
+                                    <span class="text-[10px] text-gray-400 ml-1.5">dynamic/run_command에서 $(key)로 참조 가능</span>
+                                </div>
+                                <button type="button" onclick="addDialogInput()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer">+ 입력 위젯 추가</button>
+                            </div>
+                            <div class="space-y-2">
+                                ${inputs.length === 0 ? '<p class="text-gray-500 italic text-[11px]">입력 위젯이 없습니다. 텍스트 박스, 체크박스, 슬라이더 등을 추가할 수 있습니다.</p>' : ''}
+                                ${inputs.map((inp, idx) => `
+                                    <div class="bg-mc-card p-3 rounded-xl border border-mc-border space-y-2">
+                                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                                            <select onchange="updateDialogInput(${idx}, 'type', this.value); renderVisualBuilder();" class="sm:col-span-4 bg-mc-bg border border-mc-border rounded-lg px-2 py-1.5 font-mono text-emerald-300">
+                                                <option value="minecraft:text" ${inp.type === 'minecraft:text' ? 'selected' : ''}>text (텍스트 입력)</option>
+                                                <option value="minecraft:boolean" ${inp.type === 'minecraft:boolean' ? 'selected' : ''}>boolean (체크박스)</option>
+                                                <option value="minecraft:number_range" ${inp.type === 'minecraft:number_range' ? 'selected' : ''}>number_range (슬라이더)</option>
+                                                <option value="minecraft:single_option" ${inp.type === 'minecraft:single_option' ? 'selected' : ''}>single_option (선택 버튼)</option>
+                                            </select>
+                                            <input type="text" value="${escapeHtml(inp.key || '')}" oninput="updateDialogInput(${idx}, 'key', this.value)" placeholder="변수 키 (예: player_name)" class="sm:col-span-3 bg-mc-bg border border-mc-border rounded-lg px-2 py-1.5 font-mono text-white">
+                                            <input type="text" value="${escapeHtml(inp.label || '')}" oninput="updateDialogInput(${idx}, 'label', this.value)" placeholder="라벨 텍스트" class="sm:col-span-4 bg-mc-bg border border-mc-border rounded-lg px-2 py-1.5 text-white">
+                                            <button type="button" onclick="removeDialogInput(${idx})" class="sm:col-span-1 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 font-bold text-center cursor-pointer">✕</button>
+                                        </div>
+                                        ${inp.type === 'minecraft:text' ? `
+                                            <div class="grid grid-cols-3 gap-2">
+                                                <input type="text" value="${escapeHtml(inp.initial || '')}" oninput="updateDialogInput(${idx}, 'initial', this.value)" placeholder="기본값 (initial)" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 text-gray-200">
+                                                <input type="number" value="${inp.width || 200}" oninput="updateDialogInput(${idx}, 'width', Number(this.value))" placeholder="너비 (200)" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-gray-200">
+                                                <input type="number" value="${inp.maxLength || 32}" oninput="updateDialogInput(${idx}, 'maxLength', Number(this.value))" placeholder="최대 글자수 (32)" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-gray-200">
+                                            </div>
+                                        ` : ''}
+                                        ${inp.type === 'minecraft:boolean' ? `
+                                            <div class="grid grid-cols-3 gap-2 items-center">
+                                                <label class="flex items-center gap-1.5 text-gray-300 cursor-pointer">
+                                                    <input type="checkbox" ${inp.initialBool ? 'checked' : ''} onchange="updateDialogInput(${idx}, 'initialBool', this.checked)">
+                                                    <span>기본 체크됨</span>
+                                                </label>
+                                                <input type="text" value="${escapeHtml(inp.onTrue || 'true')}" oninput="updateDialogInput(${idx}, 'onTrue', this.value)" placeholder="참일 때 치환값" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-emerald-300">
+                                                <input type="text" value="${escapeHtml(inp.onFalse || 'false')}" oninput="updateDialogInput(${idx}, 'onFalse', this.value)" placeholder="거짓일 때 치환값" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-rose-300">
+                                            </div>
+                                        ` : ''}
+                                        ${inp.type === 'minecraft:number_range' ? `
+                                            <div class="grid grid-cols-4 gap-2">
+                                                <input type="number" value="${inp.start ?? 0}" oninput="updateDialogInput(${idx}, 'start', Number(this.value))" placeholder="최소(start)" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-white">
+                                                <input type="number" value="${inp.end ?? 100}" oninput="updateDialogInput(${idx}, 'end', Number(this.value))" placeholder="최대(end)" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-white">
+                                                <input type="number" step="any" value="${inp.step ?? 1}" oninput="updateDialogInput(${idx}, 'step', Number(this.value))" placeholder="단위(step)" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-white">
+                                                <input type="number" value="${inp.initialNum ?? 50}" oninput="updateDialogInput(${idx}, 'initialNum', Number(this.value))" placeholder="초기값" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1 font-mono text-emerald-300">
+                                            </div>
+                                        ` : ''}
+                                        ${inp.type === 'minecraft:single_option' ? `
+                                            <input type="text" value="${escapeHtml(inp.optionsRaw || 'opt1:옵션 1,opt2:옵션 2')}" oninput="updateDialogInput(${idx}, 'optionsRaw', this.value)" placeholder="id:표시명,id2:표시명2 형식으로 입력" class="w-full bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1 font-mono text-emerald-300">
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 유형별 하단 버튼 설정 -->
+                        <div class="space-y-3 pt-3 border-t border-mc-border">
+                            <label class="block font-semibold text-gray-200">버튼 및 실행 액션 설정</label>
+
+                            ${dtype === 'minecraft:notice' ? `
+                                <div class="bg-mc-card p-3 rounded-xl border border-mc-border space-y-2">
+                                    <label class="block text-[11px] font-semibold text-gray-300">확인 버튼 라벨 (action.label)</label>
+                                    <input type="text" value="${escapeHtml(d.actionLabel || '확인')}" oninput="handleFieldInput('actionLabel', this.value); syncDialogPreview();" class="w-full bg-mc-bg border border-mc-border rounded-lg px-3 py-1.5 text-white">
+                                    ${renderActionSelector('action', d.actionType || 'none', d.actionValue || '')}
+                                </div>
+                            ` : ''}
+
+                            ${dtype === 'minecraft:confirmation' ? `
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div class="bg-mc-card p-3 rounded-xl border border-emerald-800/50 space-y-2">
+                                        <label class="block text-[11px] font-bold text-emerald-400">긍정 버튼 (yes)</label>
+                                        <input type="text" value="${escapeHtml(d.yesLabel || '예')}" oninput="handleFieldInput('yesLabel', this.value); syncDialogPreview();" class="w-full bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                        ${renderActionSelector('yesAction', d.yesActionType || 'run_command', d.yesActionValue || '')}
+                                    </div>
+                                    <div class="bg-mc-card p-3 rounded-xl border border-rose-800/50 space-y-2">
+                                        <label class="block text-[11px] font-bold text-rose-400">부정 버튼 (no)</label>
+                                        <input type="text" value="${escapeHtml(d.noLabel || '아니오')}" oninput="handleFieldInput('noLabel', this.value); syncDialogPreview();" class="w-full bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                        ${renderActionSelector('noAction', d.noActionType || 'none', d.noActionValue || '')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${dtype === 'minecraft:multi_action' ? `
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-gray-300">열 개수 (columns):</span>
+                                            <input type="number" min="1" max="6" value="${d.columns || 2}" oninput="handleFieldInput('columns', Number(this.value)); syncDialogPreview();" class="w-16 bg-mc-card border border-mc-border rounded-lg px-2 py-1 font-mono text-white">
+                                        </div>
+                                        <button type="button" onclick="addDialogMultiAction()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer">+ 액션 버튼 추가</button>
+                                    </div>
+                                    ${multiActions.map((ma, idx) => `
+                                        <div class="bg-mc-card p-2.5 rounded-xl border border-mc-border space-y-1.5">
+                                            <div class="flex gap-2">
+                                                <input type="text" value="${escapeHtml(ma.label || '')}" oninput="updateDialogMultiAction(${idx}, 'label', this.value)" placeholder="버튼 이름" class="flex-1 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                                <button type="button" onclick="removeDialogMultiAction(${idx})" class="px-2.5 py-1 rounded-lg bg-rose-950 text-rose-300 font-bold cursor-pointer">✕</button>
+                                            </div>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                <select onchange="updateDialogMultiAction(${idx}, 'actionType', this.value); renderVisualBuilder();" class="bg-mc-bg border border-mc-border rounded-lg px-2 py-1.5 font-mono text-white">
+                                                    <option value="none" ${ma.actionType === 'none' ? 'selected' : ''}>동작 없음</option>
+                                                    <option value="run_command" ${ma.actionType === 'run_command' ? 'selected' : ''}>run_command</option>
+                                                    <option value="dynamic/run_command" ${ma.actionType === 'dynamic/run_command' ? 'selected' : ''}>dynamic/run_command</option>
+                                                    <option value="suggest_command" ${ma.actionType === 'suggest_command' ? 'selected' : ''}>suggest_command</option>
+                                                    <option value="open_url" ${ma.actionType === 'open_url' ? 'selected' : ''}>open_url</option>
+                                                    <option value="show_dialog" ${ma.actionType === 'show_dialog' ? 'selected' : ''}>show_dialog</option>
+                                                </select>
+                                                <input type="text" value="${escapeHtml(ma.actionValue || '')}" oninput="updateDialogMultiAction(${idx}, 'actionValue', this.value)" placeholder="실행 값 입력" class="bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 font-mono text-emerald-300">
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                    <div class="bg-mc-card p-2.5 rounded-xl border border-mc-border space-y-1.5">
+                                        <label class="block text-[11px] text-gray-400">하단 종료 버튼 (exit_action, 비워두면 생략)</label>
+                                        <input type="text" value="${escapeHtml(d.exitLabel || '')}" oninput="handleFieldInput('exitLabel', this.value); syncDialogPreview();" placeholder="예: 닫기" class="w-full bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                        ${renderActionSelector('exitAction', d.exitActionType || 'none', d.exitActionValue || '')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${dtype === 'minecraft:dialog_list' ? `
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-300">연결할 다이얼로그 ID 목록 (dialogs)</span>
+                                        <button type="button" onclick="addDialogListItem()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer">+ 다이얼로그 ID 추가</button>
+                                    </div>
+                                    ${dialogsList.map((dlgId, idx) => `
+                                        <div class="flex gap-2">
+                                            <input type="text" value="${escapeHtml(dlgId)}" oninput="updateDialogListItem(${idx}, this.value)" placeholder="namespace:dialog_name" class="flex-1 bg-mc-card border border-mc-border rounded-lg px-3 py-1.5 font-mono text-emerald-300">
+                                            <button type="button" onclick="removeDialogListItem(${idx})" class="px-2.5 py-1 rounded-lg bg-rose-950 text-rose-300 font-bold cursor-pointer">✕</button>
+                                        </div>
+                                    `).join('')}
+                                    <div class="bg-mc-card p-2.5 rounded-xl border border-mc-border space-y-1.5">
+                                        <label class="block text-[11px] text-gray-400">하단 종료 버튼 (exit_action)</label>
+                                        <input type="text" value="${escapeHtml(d.exitLabel || '닫기')}" oninput="handleFieldInput('exitLabel', this.value); syncDialogPreview();" class="w-full bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-white">
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- 실시간 JSON 미리보기 -->
+                        <div class="pt-3 border-t border-mc-border space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-gray-400">생성될 JSON 미리보기</span>
+                                <span class="text-[10px] font-mono text-emerald-400">${escapeHtml(resolveFilePath(file, v))}</span>
+                            </div>
+                            <pre id="dialogJsonPreviewBox" class="bg-mc-card border border-mc-border rounded-xl p-3 font-mono text-[11px] text-emerald-300 overflow-x-auto max-h-56">${escapeHtml(file.rawText || '')}</pre>
+                        </div>
+                    </div>`;
+                return;
+            }
+
             container.innerHTML = `
                 <div class="bg-mc-bg border border-mc-border rounded-xl p-4 space-y-3 text-xs">
                     <div>
@@ -1173,6 +1595,7 @@
             file.namespace = nsVal;
             file.name = nameVal;
             file.rawText = serializeFileToText(file, getCurrentVersion());
+            document.getElementById('editorFilePath').textContent = resolveFilePath(file, getCurrentVersion());
             renderUserFileList();
         }
 
@@ -1182,6 +1605,116 @@
             if (!file.data.gridItems) file.data.gridItems = Array(9).fill('');
             file.data.gridItems[idx] = val.trim();
             file.rawText = serializeFileToText(file, getCurrentVersion());
+        }
+
+        function syncDialogPreview() {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file) return;
+            file.rawText = serializeFileToText(file, getCurrentVersion());
+            const box = document.getElementById('dialogJsonPreviewBox');
+            if (box) box.textContent = file.rawText;
+        }
+
+        function addDialogBody(type) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'dialog') return;
+            if (!Array.isArray(file.data.bodyElements)) file.data.bodyElements = [];
+            if (type === 'minecraft:item') {
+                file.data.bodyElements.push({ type: 'minecraft:item', itemId: 'minecraft:diamond', count: 1, contents: '보상 아이템' });
+            } else {
+                file.data.bodyElements.push({ type: 'minecraft:plain_message', contents: '새로운 본문 문구', width: 200 });
+            }
+            syncDialogPreview();
+            renderVisualBuilder();
+        }
+
+        function updateDialogBody(idx, key, val) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !file.data.bodyElements?.[idx]) return;
+            file.data.bodyElements[idx][key] = val;
+            syncDialogPreview();
+        }
+
+        function removeDialogBody(idx) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !file.data.bodyElements) return;
+            file.data.bodyElements.splice(idx, 1);
+            syncDialogPreview();
+            renderVisualBuilder();
+        }
+
+        function addDialogInput() {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'dialog') return;
+            if (!Array.isArray(file.data.inputs)) file.data.inputs = [];
+            const num = file.data.inputs.length + 1;
+            file.data.inputs.push({ type: 'minecraft:text', key: `input_${num}`, label: `입력 ${num}`, width: 200, initial: '' });
+            syncDialogPreview();
+            renderVisualBuilder();
+        }
+
+        function updateDialogInput(idx, key, val) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !file.data.inputs?.[idx]) return;
+            file.data.inputs[idx][key] = val;
+            syncDialogPreview();
+        }
+
+        function removeDialogInput(idx) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !file.data.inputs) return;
+            file.data.inputs.splice(idx, 1);
+            syncDialogPreview();
+            renderVisualBuilder();
+        }
+
+        function addDialogMultiAction() {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'dialog') return;
+            if (!Array.isArray(file.data.multiActions)) file.data.multiActions = [];
+            const num = file.data.multiActions.length + 1;
+            file.data.multiActions.push({ label: `버튼 ${num}`, actionType: 'run_command', actionValue: `say 버튼 ${num}` });
+            syncDialogPreview();
+            renderVisualBuilder();
+        }
+
+        function updateDialogMultiAction(idx, key, val) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !file.data.multiActions?.[idx]) return;
+            file.data.multiActions[idx][key] = val;
+            syncDialogPreview();
+        }
+
+        function removeDialogMultiAction(idx) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !file.data.multiActions) return;
+            file.data.multiActions.splice(idx, 1);
+            syncDialogPreview();
+            renderVisualBuilder();
+        }
+
+        function addDialogListItem() {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || file.categoryId !== 'dialog') return;
+            if (!Array.isArray(file.data.dialogsList)) file.data.dialogsList = [];
+            file.data.dialogsList.push(`${file.namespace}:sub_dialog`);
+            syncDialogPreview();
+            renderVisualBuilder();
+        }
+
+        function updateDialogListItem(idx, val) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !Array.isArray(file.data.dialogsList)) return;
+            file.data.dialogsList[idx] = val.trim();
+            syncDialogPreview();
+        }
+
+        function removeDialogListItem(idx) {
+            const file = state.files.find(f => f.id === state.activeFileId);
+            if (!file || !Array.isArray(file.data.dialogsList)) return;
+            file.data.dialogsList.splice(idx, 1);
+            syncDialogPreview();
+            renderVisualBuilder();
         }
 
         let pendingItemTarget = null;
@@ -1198,7 +1731,11 @@
         }
         function renderItemPickerGrid() {
             const query = (document.getElementById('itemSearchInput').value || '').toLowerCase();
-            const filtered = MC_ITEMS_DB.filter(i => !query || i.name.toLowerCase().includes(query) || i.id.toLowerCase().includes(query));
+            const cat = document.getElementById('itemPickerCatFilter').value;
+            const filtered = MC_ITEMS_DB.filter(i => 
+                (cat === 'all' || i.cat === cat) &&
+                (!query || i.name.toLowerCase().includes(query) || i.id.toLowerCase().includes(query))
+            );
             document.getElementById('itemPickerGrid').innerHTML = filtered.map(item => `
                 <button type="button" onclick="selectPickedItem('${item.id}')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-mc-bg hover:bg-mc-card border border-mc-border hover:border-emerald-500 transition text-center cursor-pointer">
                     ${renderItemIconHtml(item.id, 'w-10 h-10')}
@@ -1232,7 +1769,7 @@
             document.getElementById('btnConfirmCreateFile').addEventListener('click', confirmCreateFile);
             document.getElementById('modalNamespaceInput').addEventListener('input', updateModalPreviewPath);
             document.getElementById('modalFileNameInput').addEventListener('input', updateModalPreviewPath);
-            document.getElementById('modalTagTypeSelect').addEventListener('input', updateModalPreviewPath);
+            document.getElementById('modalTagTypeSelect').addEventListener('change', updateModalPreviewPath);
 
             document.querySelectorAll('.cat-group-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
